@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Registro Aprendices - FarmStock</title>
+
+  <!-- Prevenir flashazo del modo oscuro -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fs_dark_mode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+
+  <!-- Estilo global (usa la misma estética que el resto) -->
+  <link rel="stylesheet" href="../CSS/index.css" />
+
+  <style>
+    /* --- Layout / form tweaks --- */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      align-items: end;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+
+    .input-group { display:flex; flex-direction:column; gap:6px; }
+    input[type="text"], select {
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid var(--card-border);
+      background: color-mix(in srgb,var(--surface) 96%, transparent 4%);
+      color:var(--text);
+    }
+
+    /* Keep inputs visually inside a subtle inner panel */
+    .form-inner {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-1);
+    }
+
+    /* Filter area (dropdown + single input) */
+    .filter-row {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+    .filter-row select, .filter-row input {
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid var(--card-border);
+      background: color-mix(in srgb,var(--surface) 96%, transparent 4%);
+      color:var(--text);
+    }
+    .filter-actions { display:flex; gap:8px; }
+
+    .table-responsive { margin-top:12px; }
+    table.reg-table {
+      width:100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      min-width: 720px;
+    }
+    table.reg-table th, table.reg-table td {
+      padding:10px 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      text-align:left;
+      color:var(--text);
+    }
+    table.reg-table thead th {
+      font-weight:800;
+      color:var(--muted);
+      background: color-mix(in srgb,var(--surface) 96%, transparent 4%);
+    }
+    .actions button {
+      padding:6px 8px;
+      border-radius:8px;
+      border:none;
+      cursor:pointer;
+      font-weight:700;
+      margin-right:6px;
+    }
+    .btn-delete { background: linear-gradient(180deg,#ef5350,#d32f2f); color:#fff; }
+    .btn-edit { background:#1976d2; color:#fff; }
+
+    /* Sobrescribir el borde izquierdo verde de las tarjetas en esta página */
+    .tarjeta {
+      border-left: 1px solid var(--card-border) !important;
+    }
+
+    /* Modal: shared style for nuevo y editar */
+    .modal-backdrop-ap {
+      display:none;
+      position:fixed;
+      inset:0;
+      background: rgba(6,10,8,0.44);
+      z-index: 10000;
+      justify-content:center;
+      align-items:center;
+      padding:24px;
+    }
+    .modal-backdrop-ap.open { display:flex; }
+    .modal-ap {
+      width: 680px;
+      max-width: calc(100% - 48px);
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 18px 60px rgba(6,10,8,0.6);
+      max-height: 88vh;
+      overflow:auto;
+    }
+    .modal-ap .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+    .modal-ap .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .form-grid { grid-template-columns: 1fr; }
+      table.reg-table { min-width: 600px; }
+      .modal-ap { width: 100%; padding:14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="window-controls">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="top-section">
+        <div class="logo"><img src="../imagenes/Logo.png" alt="Logo del sitio" style="max-width:160px;display:block;" /></div>
+        <ul class="menu-modulos">
+          <li><a href="index.html">Registro Herramientas</a></li>
+          <li><a href="registro-salida.html">Salida Herramientas</a></li>
+          <li><a href="indexInventario.html">Inventario</a></li>
+          <!-- <li><a href="Notificaciones.html">Notificaciones</a></li> -->
+          <li><a href="estats.html">Estadísticas</a></li>
+          <li><a href="registro-aprendices.html" class="active">Aprendices</a></li>
+          <li><a href="equipos-computos.html">Equipos de Cómputo</a></li>
+          <li><a href="equipos-movimientos.html">Movimientos Equipos</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-bottom">
+        <a href="quienes-somos.html" class="somos">👥 Quiénes Somos</a>
+        <div class="night-mode"><span>🌙 Modo noche</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content" role="main">
+      <div class="bienvenida" style="margin-bottom:8px;">
+        <a href="perfil.html">
+          <img src="../imagenes/usuario.png" alt="Foto usuario" class="foto-usuario" />
+        </a>
+        <p><strong>Registro Aprendices</strong></p>
+      </div>
+
+      <div class="content-box">
+        <div class="header" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+          <h1>Registro Aprendices</h1>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="btnExport" class="boton-verde" style="height:40px;padding:0 14px;">Exportar CSV</button>
+            <button id="btnOpenNuevo" class="boton-verde" style="height:40px;padding:0 14px;">Registrar aprendiz</button>
+          </div>
+        </div>
+
+        <!-- Filter area: dropdown to choose field and single input for the search value -->
+        <div class="filter-row">
+          <select id="filter_field" aria-label="Campo a filtrar">
+            <option value="numero_documento">Número documento</option>
+            <option value="numero_ficha">Número ficha</option>
+          </select>
+
+          <input id="filter_value" type="text" placeholder="Escribe el valor a buscar" aria-label="Valor a buscar" />
+
+          <div class="filter-actions">
+            <button id="btnFilter" class="btn btn-small">Filtrar</button>
+            <button id="btnClearFilter" class="btn btn-small delete">Limpiar</button>
+          </div>
+        </div>
+
+        <!-- Tabla con los registros locales -->
+        <div class="table-responsive">
+          <table class="reg-table" id="tablaAprendices" aria-describedby="tablaAprendicesDesc">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo documento</th>
+                <th>Número documento</th>
+                <th>Número ficha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para crear nuevo aprendiz -->
+  <div id="modalNuevoAprendiz" class="modal-backdrop-ap" aria-hidden="true">
+    <div class="modal-ap" role="dialog" aria-modal="true" aria-labelledby="nuevoAprTitle">
+      <div class="modal-header">
+        <h2 id="nuevoAprTitle">Registrar aprendiz</h2>
+        <button id="closeNuevoApr" class="btn-small" type="button" aria-label="Cerrar">Cerrar</button>
+      </div>
+
+      <form id="formNuevoAprendiz" novalidate>
+        <div class="form-inner">
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="input-group full">
+              <label for="nuevo_ap_nombre">Nombre</label>
+              <input id="nuevo_ap_nombre" name="nombre" type="text" placeholder="Nombre completo" required/>
+            </div>
+
+            <div class="input-group">
+              <label for="nuevo_ap_tipo">Tipo de documento</label>
+              <select id="nuevo_ap_tipo" name="tipo_documento" required>
+                <option value="">Selecciona</option>
+                <option value="CC">Cédula de ciudadanía (CC)</option>
+                <option value="TI">Tarjeta de identidad (TI)</option>
+                <option value="PPT">Pasaporte (PPT)</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label for="nuevo_ap_num">Número documento</label>
+              <input id="nuevo_ap_num" name="numero_documento" type="text" placeholder="Número de documento" required />
+            </div>
+
+            <div class="input-group">
+              <label for="nuevo_ap_ficha">Número ficha</label>
+              <input id="nuevo_ap_ficha" name="numero_ficha" type="text" placeholder="Número de ficha" />
+            </div>
+
+            <div class="input-group full" style="display:flex;justify-content:flex-end;align-items:center;">
+              <button id="btnGuardarNuevo" class="btn btn-small" type="submit" style="background:linear-gradient(180deg,var(--accent-400),var(--accent-600)); color:#fff;">Guardar aprendiz</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal para editar aprendiz -->
+  <div id="modalAprendiz" class="modal-backdrop-ap" aria-hidden="true">
+    <div class="modal-ap" role="dialog" aria-modal="true" aria-labelledby="modalAprTitle">
+      <div class="modal-header">
+        <h2 id="modalAprTitle">Editar aprendiz</h2>
+        <button id="closeModalApr" class="btn-small" type="button">Cerrar</button>
+      </div>
+
+      <form id="formModalAprendiz" novalidate>
+        <input type="hidden" id="modal_ap_id" />
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="input-group">
+            <label for="modal_ap_nombre">Nombre</label>
+            <input id="modal_ap_nombre" type="text" required />
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="input-group">
+              <label for="modal_ap_tipo">Tipo de documento</label>
+              <select id="modal_ap_tipo" required>
+                <option value="">Selecciona</option>
+                <option value="CC">CC</option>
+                <option value="TI">TI</option>
+                <option value="PPT">PPT</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label for="modal_ap_num">Número documento</label>
+              <input id="modal_ap_num" type="text" required />
+            </div>
+
+            <div class="input-group">
+              <label for="modal_ap_ficha">Número ficha</label>
+              <input id="modal_ap_ficha" type="text" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="cancelModalApr" class="btn btn-small delete">Cancelar</button>
+            <button type="submit" class="btn btn-small" style="background:linear-gradient(180deg,var(--accent-400),var(--accent-600)); color:#fff;">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Contenedor para mensajes de error -->
+  <div id="error-msg" style="display:none;margin:18px auto 0 auto;max-width:600px;padding:12px 18px;background:#ffeaea;color:#a94442;border-radius:10px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.04);text-align:center;"></div>
+
+  <script>
+// URL del backend (usa FSC_Aprendices para llamadas reales)
+// const API_BASE = 'http://localhost:3000/aprendices';
+
+// Helpers
+function escapeHtml(s) { if (s == null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+const tablaBody = document.querySelector('#tablaAprendices tbody');
+const btnExport = document.getElementById('btnExport');
+const btnOpenNuevo = document.getElementById('btnOpenNuevo');
+const btnFilter = document.getElementById('btnFilter');
+const btnClearFilter = document.getElementById('btnClearFilter');
+const selectFilterField = document.getElementById('filter_field');
+const inputFilterValue = document.getElementById('filter_value');
+
+// Modal elementos (nuevo aprendiz)
+const modalNuevo = document.getElementById('modalNuevoAprendiz');
+const formNuevo = document.getElementById('formNuevoAprendiz');
+const closeNuevo = document.getElementById('closeNuevoApr');
+
+// Modal elementos (editar)
+const modalBackdrop = document.getElementById('modalAprendiz');
+const modalForm = document.getElementById('formModalAprendiz');
+const modalClose = document.getElementById('closeModalApr');
+const modalCancel = document.getElementById('cancelModalApr');
+
+// -------- API Calls (Using FSC_Aprendices) --------
+async function fetchAprendices() { return await FSC_Aprendices.getAll(); }
+async function crearAprendiz(data) { return await FSC_Aprendices.create(data); }
+async function actualizarAprendiz(id, data) { return await FSC_Aprendices.update(id, data); }
+async function eliminarAprendiz(id) { return await FSC_Aprendices.remove(id); }
+
+async function buscarPorDocumento(tipo, numero) { 
+  const list = await fetchAprendices();
+  return list.find(a => a.tipoDocumento === tipo && a.numeroDocumento === numero);
+}
+async function buscarPorFicha(ficha) {
+  const list = await fetchAprendices();
+  return list.filter(a => a.numeroFicha === ficha);
+}
+
+// -------- Render y lógica UI --------
+
+async function renderTable(filter = {}) {
+  let aprendices = [];
+  try {
+    aprendices = await fetchAprendices();
+  } catch(e) {
+    tablaBody.innerHTML = `<tr><td colspan="5" style="padding:14px;color:var(--muted);">Error cargando aprendices: ${e.message}</td></tr>`;
+    return;
+  }
+
+  let filtered = aprendices;
+  if (filter.field && filter.value && filter.value.trim() !== '') {
+    // Si es nro documento o ficha, filtro según corresponda
+    if (filter.field === 'numero_documento') {
+      filtered = aprendices.filter(a => String(a.numeroDocumento||'').toLowerCase().includes(filter.value.toLowerCase()));
+    } else if (filter.field === 'numero_ficha') {
+      filtered = aprendices.filter(a => String(a.numeroFicha||'').toLowerCase().includes(filter.value.toLowerCase()));
+    }
+  }
+
+  tablaBody.innerHTML = '';
+  if (!Array.isArray(filtered) || filtered.length === 0) {
+    const tr = document.createElement('tr');
+    if (filter && filter.field && filter.value && filter.value.trim() !== '') {
+      const fieldLabel = (filter.field === 'numero_documento') ? 'número de documento' :
+                         (filter.field === 'numero_ficha') ? 'número de ficha' : filter.field;
+      tr.innerHTML = `<td colspan="5" style="padding:14px;color:var(--muted);">No se encontró ningún aprendiz con ${fieldLabel} «${escapeHtml(filter.value)}».</td>`;
+    } else {
+      tr.innerHTML = '<td colspan="5" style="padding:14px;color:var(--muted);">No hay aprendices registrados.</td>';
+    }
+    tablaBody.appendChild(tr);
+    return;
+  }
+
+  filtered.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(item.nombre)}</td>
+      <td>${escapeHtml(item.tipoDocumento)}</td>
+      <td>${escapeHtml(item.numeroDocumento)}</td>
+      <td>${escapeHtml(item.numeroFicha)}</td>
+      <td class="actions">
+        <button class="btn-edit" data-id="${item.idAprendiz}">Editar</button>
+        <button class="btn-delete" data-id="${item.idAprendiz}">Eliminar</button>
+      </td>
+    `;
+    tablaBody.appendChild(tr);
+  });
+}
+
+// ------------ Modales -------------
+
+function openNuevoModal() {
+  modalNuevo.classList.add('open');
+  modalNuevo.setAttribute('aria-hidden', 'false');
+  document.getElementById('nuevo_ap_nombre').focus();
+}
+function closeNuevoModal() {
+  modalNuevo.classList.remove('open');
+  modalNuevo.setAttribute('aria-hidden', 'true');
+  formNuevo.reset();
+}
+
+btnOpenNuevo.addEventListener('click', openNuevoModal);
+closeNuevo.addEventListener('click', closeNuevoModal);
+modalNuevo.addEventListener('click', function (ev) { if (ev.target === modalNuevo) closeNuevoModal(); });
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { closeNuevoModal(); closeEditModal(); } });
+
+// ---- Nuevo aprendiz (form) -----
+formNuevo.addEventListener('submit', async function (ev) {
+  ev.preventDefault();
+  const nombre = document.getElementById('nuevo_ap_nombre').value.trim();
+  const tipo = document.getElementById('nuevo_ap_tipo').value;
+  const numero = document.getElementById('nuevo_ap_num').value.trim();
+  const ficha = document.getElementById('nuevo_ap_ficha').value.trim();
+  if (!nombre || !tipo || !numero || !ficha) {
+    alert('Completa todos los campos.');
+    return;
+  }
+  try {
+    await crearAprendiz({
+      nombre,
+      tipoDocumento: tipo,
+      numeroDocumento: numero,
+      numeroFicha: ficha
+    });
+    closeNuevoModal();
+    renderTable();
+    alert('Aprendiz guardado.');
+  } catch (e) {
+    mostrarError('No se pudo guardar el aprendiz: ' + (e.message || 'Verifica los datos.'));
+  }
+});
+
+// Delegar acciones tabla
+tablaBody.addEventListener('click', async function (ev) {
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.classList.contains('btn-delete')) {
+    if (!confirm('Eliminar aprendiz?')) return;
+    try {
+      await eliminarAprendiz(id);
+      renderTable();
+      alert('El aprendiz ha sido eliminado.');
+    } catch (e) {
+      mostrarError('No se pudo eliminar el aprendiz: ' + (e.message || 'Intenta de nuevo.'));
+    }
+    return;
+  }
+  if (btn.classList.contains('btn-edit')) {
+    openEditModal(id);
+    return;
+  }
+});
+
+// Exportar CSV
+btnExport.addEventListener('click', async function () {
+  let list;
+  try {
+    list = await fetchAprendices();
+  } catch (e) {
+    alert('Error al cargar aprendices: ' + e.message);
+    return;
+  }
+  if (!list || list.length === 0) { alert('No hay registros para exportar.'); return; }
+  const headers = ['nombre','tipoDocumento','numeroDocumento','numeroFicha'];
+  const rows = [headers.join(',')].concat(list.map(r => headers.map(h => `"${(r[h] || '').toString().replace(/"/g,'""')}"`).join(',')));
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'aprendices.csv'; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+});
+
+// ---- Filtros
+btnFilter.addEventListener('click', function () {
+  const field = selectFilterField.value;
+  const value = inputFilterValue.value || '';
+  renderTable({ field, value });
+});
+btnClearFilter.addEventListener('click', function () {
+  selectFilterField.value = 'numero_documento';
+  inputFilterValue.value = '';
+  renderTable();
+});
+
+// -------- Editar - modal ---------
+function openEditModal(id) {
+  fetchAprendices().then(list => {
+    const item = list.find(x => (x.idAprendiz && x.idAprendiz.toString()) === id.toString());
+    if (!item) { alert('Registro no encontrado.'); return; }
+    document.getElementById('modal_ap_id').value = item.idAprendiz;
+    document.getElementById('modal_ap_nombre').value = item.nombre;
+    document.getElementById('modal_ap_tipo').value = item.tipoDocumento;
+    document.getElementById('modal_ap_num').value = item.numeroDocumento;
+    document.getElementById('modal_ap_ficha').value = item.numeroFicha;
+
+    modalBackdrop.classList.add('open');
+    modalBackdrop.setAttribute('aria-hidden', 'false');
+    document.getElementById('modal_ap_nombre').focus();
+  });
+}
+
+function closeEditModal() {
+  modalBackdrop.classList.remove('open');
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+  if (modalForm) modalForm.reset();
+}
+if (modalClose) modalClose.addEventListener('click', closeEditModal);
+if (modalCancel) modalCancel.addEventListener('click', closeEditModal);
+modalBackdrop.addEventListener('click', function (ev) { if (ev.target === modalBackdrop) closeEditModal(); });
+
+// Guardar edición
+if (modalForm) {
+  modalForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    const id = document.getElementById('modal_ap_id').value;
+    const nombre = document.getElementById('modal_ap_nombre').value.trim();
+    const tipo = document.getElementById('modal_ap_tipo').value;
+    const numero = document.getElementById('modal_ap_num').value.trim();
+    const ficha = document.getElementById('modal_ap_ficha').value.trim();
+    if (!id || !nombre || !tipo || !numero || !ficha) {
+      alert('Completa todos los campos.');
+      return;
+    }
+    try {
+      await actualizarAprendiz(id, {
+        nombre,
+        tipoDocumento: tipo,
+        numeroDocumento: numero,
+        numeroFicha: ficha
+      });
+      closeEditModal();
+      renderTable();
+      alert('Cambios guardados.');
+    } catch (e) {
+      alert('Error al guardar: '+ e.message);
+    }
+  });
+}
+
+// -------- Inicialización
+renderTable();
+
+function mostrarError(msg) {
+  const errorDiv = document.getElementById('error-msg');
+  if (errorDiv) {
+    errorDiv.textContent = msg;
+    errorDiv.style.display = 'block';
+    setTimeout(() => { errorDiv.style.display = 'none'; }, 6000);
+  } else {
+    alert(msg);
+  }
+}
+  </script>
+<script src="../FSApiClient.js"></script>
+<script src="../FSApiClient.aprendices.js"></script> 
+<script src="../user-session.js"></script>
+<script src="../modo-oscuro.js"></script>
+<script src="../render-window.js"></script>
+<script src="../aprendices.js"></script>
+
+</body>
+</html>

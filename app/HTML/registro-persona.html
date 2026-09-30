@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro - FarmStock</title>
+
+  <!-- Prevenir flashazo del modo oscuro -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fs_dark_mode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+
+  <!-- Hoja global -->
+  <link rel="stylesheet" href="../CSS/index.css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+ 
+
+  <style>
+    /* Mantengo tus estilos locales (sin tocar comportamiento) */
+    .registro-page {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 36px);
+      padding: 28px;
+      box-sizing: border-box;
+      max-width: calc(var(--max-width-main, 1200px) + 40px);
+      margin: 0 auto;
+    }
+    .registro-card {
+      width: 100%;
+      max-width: 760px;
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 28px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-1);
+      box-sizing: border-box;
+      position: relative;
+    }
+    .registro-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+    .site-brand img { height:56px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .input-group-plain { display:flex; flex-direction:column; gap:8px; }
+    .btn-primary { background: linear-gradient(180deg, var(--accent-400), var(--accent-600)); color:#fff; border:none; padding:12px 16px; border-radius:10px; font-weight:800; cursor:pointer; }
+    .back-btn { position:absolute; left:18px; bottom:18px; padding:8px 12px; border-radius:8px; background: color-mix(in srgb, var(--surface) 96%, transparent 4%); border:1px solid var(--card-border); color:var(--text); font-weight:700; text-decoration:none; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+    input, select, textarea { border:1px solid var(--card-border); background: color-mix(in srgb, var(--surface) 96%, transparent 4%); padding:10px 12px; border-radius:10px; color:var(--text); font-size:14px; }
+    @media (max-width: 920px) { .form-grid { grid-template-columns:1fr; } .site-brand img { height:44px; } }
+  </style>
+</head>
+
+<body>
+  <div class="window-controls">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+  <main class="registro-page" role="main">
+    <section class="registro-card" aria-labelledby="registroTitle">
+      <!-- Header: only logo left + night-mode right -->
+      <div class="registro-header">
+        <div class="site-brand"><img src="../imagenes/Logo.png" alt="FarmStock logo" /></div>
+        <div class="top-actions"><div class="night-mode" title="Alternar modo noche"><span id="btnModoNoche">🌙 Modo noche</span></div></div>
+      </div>
+
+      <h1 id="registroTitle">Crear cuenta</h1>
+
+      <form id="registroForm" autocomplete="on" novalidate>
+        <div class="form-grid">
+          <div class="input-group-plain">
+            <label for="nombres">Nombres</label>
+            <input id="nombres" name="nombres" type="text" placeholder="Nombres completos" required>
+          </div>
+
+          <div class="input-group-plain">
+            <label for="apellidos">Apellidos</label>
+            <input id="apellidos" name="apellidos" type="text" placeholder="Apellidos" required>
+          </div>
+
+          <!-- Tipo documento: name y id alineados con backend (tipoDocumento) -->
+          <div class="input-group-plain">
+            <label for="tipoDocumento">Tipo de documento</label>
+            <select id="tipoDocumento" name="tipoDocumento" required>
+              <option value="">Selecciona tipo</option>
+              <option value="CC">Cédula de ciudadanía (CC)</option>
+              <option value="TI">Tarjeta de identidad (TI)</option>
+              <option value="PPT">Pasaporte (PPT)</option>
+            </select>
+          </div>
+
+          <!-- Número de documento: name y id alineados con backend (numeroDocumento) -->
+          <div class="input-group-plain">
+            <label for="numeroDocumento">Número de documento</label>
+            <input id="numeroDocumento" name="numeroDocumento" type="text" placeholder="Número de documento" required>
+          </div>
+
+          <div class="input-group-plain">
+            <label for="correo">Correo electrónico</label>
+            <input id="correo" name="correo" type="email" placeholder="correo@ejemplo.com" required>
+          </div>
+
+          <div class="input-group-plain">
+            <label for="telefono">Teléfono</label>
+            <input id="telefono" name="telefono" type="tel" placeholder="+57 300 000 0000">
+          </div>
+
+          <div class="input-group-plain">
+            <label for="cargo">Cargo</label>
+            <select id="cargo" name="cargo" required>
+              <option value="">Cargo</option>
+              <option value="instructor">Instructor</option>
+                <option value="celador">Celador</option>
+              <option value="administrador">Administrador</option>
+            </select>
+          </div>
+
+          <!-- contraseña: name alineado con backend (contrasena) -->
+          <div class="input-group-plain">
+            <label for="contrasena">Contraseña</label>
+            <input id="contrasena" name="contrasena" type="password" placeholder="••••••••" required>
+          </div>
+
+          <div class="input-group-plain">
+            <label for="confirm_password">Confirmar contraseña</label>
+            <input id="confirm_password" name="confirm_password" type="password" placeholder="••••••••" required>
+          </div>
+
+          <div class="full" style="display:flex;justify-content:flex-end;align-items:center;">
+            <button type="submit" class="btn-primary">Registrarme</button>
+          </div>
+        </div>
+      </form>
+
+      <a class="back-btn" href="login.html" title="Volver al login">← Atrás</a>
+    </section>
+  </main>
+
+  <script src="../render.js"></script>
+  <script src="../modo-oscuro.js"></script>
+  <script src="../render-window.js"></script>
+  <script src="../FSApiClient.js"></script>
+</body>
+
+</html>

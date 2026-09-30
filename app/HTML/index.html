@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FarmStock</title>
+  <!-- Prevenir flashazo del modo oscuro -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fs_dark_mode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="../CSS/index.css" />
+  <style>
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6,10,8,0.44);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 12000;
+      padding: 24px;
+      backdrop-filter: blur(4px) saturate(1.07);
+    }
+
+    .modal,
+    .modal-ap,
+    .modal-contenido {
+      width: 780px;
+      max-width: calc(100% - 40px);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 18px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.32);
+      border: 1px solid var(--card-border);
+    }
+
+    .edit-panel {
+      background: var(--surface);
+      border: 1px solid var(--card-border);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-small {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      color: var(--surface);
+      background-color: var(--accent);
+      font-size: 13px;
+      margin-left: 8px;
+    }
+    .btn-small.delete { background-color: var(--danger); }
+
+    .modal-header {
+      display: flex !important;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 12px;
+    }
+
+    .modal .modal-list { display:flex; flex-direction:column; gap:12px; margin-top:8px; }
+
+    @media (max-width:820px) {
+      .modal, .modal-ap, .modal-contenido {
+        width: 100%;
+        max-width: 98vw;
+        padding: 5vw 2vw;
+        border-radius: 10px;
+        margin: 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Controles ventana (Electron) -->
+  <div class="window-controls" style="position:fixed;right:8px;top:8px;z-index:13000;">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+
+  <!-- Contenedor general -->
+  <div class="container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="top-section">
+        <div class="logo"><img src="../imagenes/Logo.png" alt="Logo del sitio" /></div>
+        <ul class="menu-modulos">
+            <li><a href="index.html" class="active">Registro Herramientas</a></li>
+            <li><a href="registro-salida.html">Salida Herramientas</a></li>
+            <li><a href="indexInventario.html">Inventario</a></li>
+            <!-- <li><a href="Notificaciones.html">Notificaciones</a></li> -->
+            <li><a href="estats.html">Estadísticas</a></li>
+            <li><a href="registro-aprendices.html">Aprendices</a></li>
+            <li><a href="equipos-computos.html">Equipos de Cómputo</a></li>
+            <li><a href="equipos-movimientos.html">Movimientos Equipos</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-bottom">
+        <a href="quienes-somos.html" class="somos">👥 Quiénes Somos</a>
+        <div class="night-mode"><span id="btnModoNoche">🌙 Modo noche</span></div>
+      </div>
+    </aside>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+      <div class="bienvenida">
+        <a href="perfil.html">
+          <img src="../imagenes/usuario.png" alt="Foto de usuario" class="foto-usuario" />
+        </a>
+        <p><strong>¡Hola Usuario!</strong></p>
+      </div>
+
+      <!-- Formulario principal -->
+      <div class="area-superior">
+        <div class="formulario-card">
+          <form id="formHerramienta" class="formulario-horizontal" novalidate>
+            <div class="columna borde-derecho">
+              <label for="nombre">Nombre de herramienta</label>
+              <input type="text" id="nombre" name="nombre" placeholder="Escribe el nombre de la herramienta" required>
+
+              <label for="estado">Estado</label>
+              <select id="estado" name="estado" required>
+                <option value="">Seleccionar</option>
+                <option value="Disponible">Disponible</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="No_disponible">No disponible</option>
+              </select>
+
+              <label for="tipo">Tipo</label>
+              <select id="tipo" name="tipo" required>
+                <option value="">Seleccionar</option>
+                <option value="Manual">Manual</option>
+                <option value="Electrica">Eléctrica</option>
+              </select>
+
+              <label for="ubicacion">Ubicación</label>
+              <select id="ubicacion" name="ubicacion" required>
+                <option value="">Seleccionar</option>
+                <option value="Bodega">Bodega</option>
+                <option value="Taller">Taller</option>
+              </select>
+            </div>
+
+            <div class="columna borde-derecho">
+              <label for="fecha_registro">Fecha de registro</label>
+              <input type="date" id="fecha_registro" name="fecha_registro" required>
+
+              <label for="numero_lote">Número de Lote</label>
+              <select id="numero_lote" name="numero_lote" required>
+                <option value="">Seleccionar</option>
+                <option value="Lote 1">Lote 1</option>
+                <option value="Lote 2">Lote 2</option>
+              </select>
+
+              <label for="cantidad">Cantidad</label>
+              <input type="number" id="cantidad" name="cantidad" min="1" placeholder="Ejemplo: 10" required>
+            </div>
+
+            <div class="columna descripcion">
+              <label for="codigoHerramienta">Código de Herramienta</label>
+              <input type="text" id="codigoHerramienta" name="codigoHerramienta" placeholder="Ejemplo: HER-2026-001" required>
+              <label for="descripcion">Descripción de herramienta</label>
+              <textarea id="descripcion" name="descripcion" placeholder="Escribe aquí la descripción de la herramienta"></textarea>
+              <div class="boton-registrar" style="display:flex;justify-content:flex-end;align-items:flex-end;margin-top:24px;">
+                  <button type="submit" id="btnRegistrar" class="btn btn-warning">Registrar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Herramientas registradas y buscador por código informe -->
+      <div class="area-inferior">
+        <div class="herramientas-hoy">
+          <h3>Herramientas registradas hoy</h3>
+          <div id="listaHoy" class="lista-tarjetas" aria-live="polite"></div>
+          <div id="errorMsg" style="display:none;color:#b00020;margin-top:8px;">Hubo un error al obtener las herramientas.</div>
+        </div>
+      </div>
+    </main>
+  </div>    
+
+  <!-- Modal backdrop -->
+  <div id="modalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+      <div class="modal-header">
+        <h3 id="modalTitle">Registro</h3>
+        <div><button id="closeModal" class="btn-small" style="background:#9e9e9e;color:#111;" type="button">Cerrar</button></div>
+      </div>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // IPC helper (intenta preload o require)
+    function sendWindowIPC(channel) {
+      try {
+        if (window.electronAPI && typeof window.electronAPI.send === 'function') {
+          window.electronAPI.send(channel); return;
+        }
+        if (window.api && typeof window.api.send === 'function') {
+          window.api.send(channel); return;
+        }
+        if (typeof require === 'function') {
+          const { ipcRenderer } = require('electron');
+          ipcRenderer.send(channel); return;
+        }
+      } catch (e) {
+        console.warn('IPC no disponible:', e);
+      }
+      console.warn('No se pudo enviar IPC. Asegura preload.js exponga electronAPI.send o api.send');
+    }
+    document.getElementById('minimize').addEventListener('click', () => sendWindowIPC('window-minimize'));
+    document.getElementById('maximize').addEventListener('click', () => sendWindowIPC('window-maximize'));
+    document.getElementById('close').addEventListener('click', () => sendWindowIPC('window-close'));
+  </script>
+
+  <!-- Lógica PRINCIPAL SOLO ONLINE -->
+  <script>
+(function() {
+  var API_BASE = 'http://localhost:3000';
+  var HERR_URL = API_BASE + '/herramienta';
+  var DETALLE_URL_BASE = API_BASE + '/api/herramienta-detalle';
+
+  var form = document.getElementById('formHerramienta');
+  var listaHoy = document.getElementById('listaHoy');
+  var modalBackdrop = document.getElementById('modalBackdrop');
+  var modalContent = document.getElementById('modalContent');
+  var modalTitle = document.getElementById('modalTitle');
+  var closeModalBtn = document.getElementById('closeModal');
+  var fechaInput = document.getElementById('fecha_registro');
+  var errorMsg = document.getElementById('errorMsg');
+
+  function showError(msg) {
+      if (errorMsg) {
+          errorMsg.textContent = msg;
+          errorMsg.style.display = 'block';
+      }
+  }
+  function hideError() {
+      if (errorMsg) {
+          errorMsg.textContent = '';
+          errorMsg.style.display = 'none';
+      }
+  }
+  function escapeHtml(str) {
+      return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function nowIsoDate() {
+      return new Date().toISOString().split('T')[0];
+  }
+  function generateRandomCode() {
+      const year = new Date().getFullYear();
+      const random = Math.floor(1000 + Math.random() * 9000);
+      return 'HER-' + year + '-' + random;
+  }
+  function setRandomToolCode() {
+      const input = document.getElementById('codigoHerramienta');
+      if (input && !input.value) {
+          input.value = generateRandomCode();
+      }
+  }
+  function readErrorMessage(res) {
+      return res.text().then(function(text) {
+          try {
+              var json = JSON.parse(text);
+              if (json && json.message) return json.message;
+              if (json && json.error) return (json.error + (json.message ? ': ' + json.message : ''));
+          } catch (e) {}
+          return text || ('Error ' + res.status);
+      });
+  }
+
+  function renderToolsListFromArray(herramientas) {
+      listaHoy.innerHTML = '';
+      if (!Array.isArray(herramientas) || herramientas.length === 0) {
+          listaHoy.innerHTML = '<p>No hay registros para hoy.</p>';
+          return;
+      }
+      herramientas.forEach(function(h) {
+          var id = h.idHerramienta || h.id || h.id_herramienta || '';
+          var nombre = h.nombre || 'Sin nombre';
+          var estado = h.estado || '—';
+          var tipo = h.tipo || '—';
+          var ubicacion = h.ubicacion || '—';
+          var fecha = h.fechaRegistro || h.fecha_registro || h.fecha || '—';
+          var lote = h.numeroLote || h.numero_lote || h.lote || '—';
+          var cantidad = (h.cantidad != null) ? h.cantidad : 0;
+          var descripcion = h.descripcion || 'Sin descripción';
+          var codigoInforme = h.codigoInforme || h.codigo_informe || '';
+
+          var card = document.createElement('div');
+          card.className = 'tarjeta';
+          var inner = '<h4>🛠 ' + escapeHtml(nombre) + '</h4>' +
+              '<p><strong>Estado:</strong> ' + escapeHtml(estado) + '</p>' +
+              '<p><strong>Tipo:</strong> ' + escapeHtml(tipo) + '</p>' +
+              '<p><strong>Ubicación:</strong> ' + escapeHtml(ubicacion) + '</p>' +
+              '<p><strong>Fecha registro:</strong> ' + escapeHtml(String(fecha)) + '</p>' +
+              '<p><strong>Lote:</strong> ' + escapeHtml(lote) + '</p>' +
+              '<p><strong>Cantidad:</strong> ' + escapeHtml(String(cantidad)) + '</p>' +
+              '<p><strong>Descripción:</strong> ' + escapeHtml(descripcion) + '</p>' +
+              '<p><strong>Código de herramienta:</strong> ' + escapeHtml(h.codigoHerramienta || h.codigo_herramienta || '-') + '</p>';
+
+          card.innerHTML = inner;
+
+          var acciones = document.createElement('div');
+          acciones.className = 'acciones';
+          var btnEdit = document.createElement('button');
+          btnEdit.type = 'button';
+          btnEdit.className = 'btn-small';
+          btnEdit.textContent = 'Editar';
+          btnEdit.addEventListener('click', function() { openEditLoteModal(id); });
+
+          var btnDelete = document.createElement('button');
+          btnDelete.type = 'button';
+          btnDelete.className = 'btn-small delete';
+          btnDelete.textContent = 'Eliminar';
+          btnDelete.addEventListener('click', function() { eliminarLote(id); });
+
+          var btnDetails = document.createElement('button');
+          btnDetails.type = 'button';
+          btnDetails.className = 'btn-small';
+          btnDetails.textContent = 'Detalles';
+          btnDetails.addEventListener('click', function() {
+              openDetallesModal(id, nombre);
+          });
+
+          acciones.appendChild(btnEdit);
+          acciones.appendChild(btnDetails);
+          acciones.appendChild(btnDelete);
+
+          card.appendChild(acciones);
+
+          listaHoy.appendChild(card);
+      });
+  }
+
+  function obtenerHerramientasHoy() {
+      hideError();
+      listaHoy.innerHTML = '<p>⏳ Cargando...</p>';
+      fetch(HERR_URL + '/hoy', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+      })
+      .then(function(res) {
+          if (!res.ok) {
+              return readErrorMessage(res).then(function(msg) {
+                  throw new Error(msg);
+              });
+          }
+          return res.json();
+      })
+      .then(function(herramientas) {
+          renderToolsListFromArray(herramientas || []);
+          hideError();
+      })
+      .catch(function(err) {
+          listaHoy.innerHTML = '<p style="color: var(--danger);">⚠️ Error al conectar con el servidor</p>';
+          showError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo.');
+      });
+  }
+
+  form.addEventListener('submit', function(ev) {
+      ev.preventDefault();
+      hideError();
+      var fd = new FormData(form);
+      var data = {};
+      fd.forEach(function(v, k) { data[k] = v; });
+
+      if (!data.fecha_registro) data.fecha_registro = nowIsoDate();
+      data.cantidad = parseInt(data.cantidad, 10) || 0;
+      function getTodayISO() {
+          var d = new Date();
+          return d.toISOString().slice(0, 10);
+      }
+      var payload = {
+          nombre: data.nombre,
+          descripcion: data.descripcion,
+          estado: data.estado,
+          tipo: data.tipo,
+          ubicacion: data.ubicacion,
+          numeroLote: data.numero_lote,
+          cantidad: parseInt(data.cantidad, 10) || 0,
+          fechaRegistro: getTodayISO(),
+          codigoHerramienta: data.codigoHerramienta
+      };
+      if (!payload.nombre || payload.nombre.trim() === '') { alert('❌ El nombre es obligatorio'); return; }
+      if (!payload.estado || payload.estado === '') { alert('❌ El estado es obligatorio'); return; }
+      if (!payload.tipo || payload.tipo === '') { alert('❌ El tipo es obligatorio'); return; }
+      if (!payload.ubicacion || payload.ubicacion === '') { alert('❌ La ubicación es obligatoria'); return; }
+      if (!payload.numeroLote || payload.numeroLote === '') { alert('❌ El número de lote es obligatorio'); return; }
+      if (!payload.cantidad || payload.cantidad <= 0) { alert('❌ La cantidad debe ser mayor a 0'); return; }
+      if (!payload.fechaRegistro) { alert('❌ La fecha de registro es obligatoria'); return; }
+      if (!payload.codigoHerramienta || payload.codigoHerramienta.trim() === '') { alert('❌ El código de herramienta es obligatorio'); return; }
+
+      fetch(HERR_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          })
+          .then(function(res) {
+              if (res.status === 201 || res.ok) {
+                  return res.json().catch(function() { return null; });
+              }
+              return readErrorMessage(res).then(function(msg) { throw new Error(msg); });
+          })
+          .then(function(created) {
+              obtenerHerramientasHoy();
+              alert('✅ Herramienta registrada exitosamente');
+              form.reset();
+              if (fechaInput) fechaInput.value = nowIsoDate();
+              setRandomToolCode();
+          })
+          .catch(function(err) {
+              alert('❌ Error al registrar herramienta: ' + err.message);
+          });
+  });
+
+  function eliminarLote(id) {
+      if (!id) { alert('❌ ID inválido'); return; }
+      if (!confirm('¿Estás seguro de eliminar la herramienta ' + id + '?')) return;
+      fetch(HERR_URL + '/' + encodeURIComponent(id), {
+              method: 'DELETE'
+          })
+          .then(function(res) {
+              if (!res.ok) {
+                  return readErrorMessage(res).then(function(msg) { throw new Error(msg); });
+              }
+              obtenerHerramientasHoy();
+              alert('✅ Herramienta eliminada');
+          })
+          .catch(function(err) {
+              alert('❌ Error al eliminar: ' + err.message);
+          });
+  }
+
+  function openEditLoteModal(id) {
+      if (!id) return;
+      hideError();
+      modalTitle.textContent = 'Editar registro';
+      modalContent.innerHTML = '<p>⏳ Cargando...</p>';
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden', 'false');
+
+      fetch(HERR_URL + '/' + encodeURIComponent(id))
+          .then(function(res) {
+              if (!res.ok) {
+                  return readErrorMessage(res).then(function(msg) { throw new Error(msg); });
+              }
+              return res.json();
+          })
+          .then(function(found) {
+              if (!found) {
+                  closeModal();
+                  alert('❌ No se encontró el registro');
+                  return;
+              }
+              buildEditModalFromFound(found);
+          })
+          .catch(function(err) {
+              closeModal();
+              showError('No se pudo cargar el registro: ' + (err && err.message ? err.message : 'error'));
+          });
+
+      function buildEditModalFromFound(found) {
+          modalContent.innerHTML = '';
+          var container = document.createElement('div');
+          var html = '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+              '<div style="flex:1;min-width:240px;"><label>Nombre</label><input id="edit_nombre" type="text" value="' + escapeHtml(found.nombre || '') + '" /></div>' +
+              '<div style="flex:1;min-width:180px;"><label>Estado</label><select id="edit_estado"><option value="">Seleccionar</option><option value="Disponible">Disponible</option><option value="Mantenimiento">Mantenimiento</option><option value="No_disponible">No disponible</option></select></div>' +
+              '<div style="flex:1;min-width:180px;"><label>Tipo</label><select id="edit_tipo"><option value="">Seleccionar</option><option value="Manual">Manual</option><option value="Electrica">Eléctrica</option></select></div>' +
+              '</div>' +
+              '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+              '<div style="flex:1;min-width:180px;"><label>Ubicación</label><select id="edit_ubicacion"><option value="">Seleccionar</option><option value="Bodega">Bodega</option><option value="Taller">Taller</option></select></div>' +
+              '<div style="flex:1;min-width:180px;"><label>Fecha registro</label><input id="edit_fecha" type="date" value="' + escapeHtml(String(found.fechaRegistro || found.fecha_registro || found.fecha_registro || '')) + '" /></div>' +
+              '<div style="flex:1;min-width:180px;"><label>Número lote</label><select id="edit_lote"><option value="">Seleccionar</option><option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option></select></div>' +
+              '</div>' +
+              '<div style="margin-top:10px;"><label>Código de herramienta</label><input id="edit_codigoHerramienta" type="text" value="' + escapeHtml(found.codigoHerramienta || found.codigo_herramienta || '') + '" style="width:100%; border:1px solid #ccc; padding:8px; border-radius:4px;" /></div>' +
+              '<div style="margin-top:10px;"><label>Cantidad</label><input id="edit_cantidad" type="number" min="0" value="' + escapeHtml(String(found.cantidad || 0)) + '" /></div>' +
+              '<div style="margin-top:10px;"><label>Descripción</label><textarea id="edit_descripcion" style="width:100%;">' + escapeHtml(found.descripcion || '') + '</textarea></div>' +
+              '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;"><button id="saveEdit" class="btn-small" type="button">Guardar</button><button id="cancelEdit" class="btn-small delete" type="button">Cancelar</button></div>';
+          container.innerHTML = html;
+          modalContent.appendChild(container);
+
+          try { document.getElementById('edit_estado').value = found.estado || ''; } catch(e){}
+          try { document.getElementById('edit_tipo').value = found.tipo || ''; } catch(e){}
+          try { document.getElementById('edit_ubicacion').value = found.ubicacion || ''; } catch(e){}
+          try { document.getElementById('edit_lote').value = found.numeroLote || found.numero_lote || ''; } catch(e){}
+
+          document.getElementById('cancelEdit').addEventListener('click', function() { closeModal(); });
+
+          document.getElementById('saveEdit').addEventListener('click', function() {
+              var payload = {
+                  nombre: (document.getElementById('edit_nombre').value || '').trim(),
+                  estado: (document.getElementById('edit_estado').value || '').trim(),
+                  tipo: (document.getElementById('edit_tipo').value || '').trim(),
+                  ubicacion: (document.getElementById('edit_ubicacion').value || '').trim(),
+                  fecha_registro: (document.getElementById('edit_fecha').value || ''),
+                   numero_lote: (document.getElementById('edit_lote').value || ''),
+                   cantidad: parseInt(document.getElementById('edit_cantidad').value || '0', 10) || 0,
+                   descripcion: (document.getElementById('edit_descripcion').value || '').trim(),
+                   codigoHerramienta: (document.getElementById('edit_codigoHerramienta').value || '').trim()
+               };
+              if (!payload.nombre || !payload.estado) {
+                  alert('❌ Completa al menos nombre y estado.');
+                  return;
+              }
+              fetch(HERR_URL + '/' + encodeURIComponent(found.idHerramienta), {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload)
+                  })
+                  .then(function(res) {
+                      if (!res.ok) return readErrorMessage(res).then(function(msg) { throw new Error(msg); });
+                      return res.json().catch(function() { return null; });
+                  })
+                  .then(function() {
+                      alert('✅ Registro actualizado exitosamente');
+                      closeModal();
+                      obtenerHerramientasHoy();
+                  })
+                  .catch(function(err) {
+                      alert('❌ Error al actualizar: ' + err.message);
+                  });
+          });
+      }
+  }
+
+  function openDetallesModal(herramientaId, nombreLote) {
+      if (!herramientaId) return;
+      hideError();
+      modalTitle.textContent = 'Detalles: ' + (nombreLote || '');
+      modalContent.innerHTML = '<p>⏳ Cargando detalles...</p>';
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden', 'false');
+      fetch(DETALLE_URL_BASE + '/herramienta/' + encodeURIComponent(herramientaId))
+          .then(function(res) {
+              if (!res.ok) {
+                  return readErrorMessage(res).then(function(msg) { throw new Error(msg); });
+              }
+              return res.json();
+          })
+          .then(function(detalles) {
+              modalContent.innerHTML = '';
+              renderDetallesList(detalles || []);
+          })
+          .catch(function(err) {
+              alert('❌ Error al cargar detalles: ' + err.message);
+              modalBackdrop.style.display = 'none';
+          });
+  }
+
+  function renderDetallesList(detalles) {
+      modalContent.innerHTML = '';
+      if (!Array.isArray(detalles) || detalles.length === 0) {
+          modalContent.innerHTML = '<p>No hay detalles.</p>';
+          return;
+      }
+      var listDiv = document.createElement('div');
+      listDiv.className = 'modal-list';
+      detalles.forEach(function(d, idx) {
+          var cont = document.createElement('div');
+          cont.className = 'tarjeta';
+          var left = document.createElement('div');
+          left.style.flex = '1';
+          var nombreUnit = (d.herramienta && d.herramienta.nombre) ? d.herramienta.nombre : ('Unidad ' + (idx + 1));
+          var h4 = document.createElement('h4');
+          h4.textContent = nombreUnit + ' — ' + (d.codigoUnico || '');
+          var p1 = document.createElement('p');
+          p1.innerHTML = '<strong>Estado:</strong> ' + escapeHtml(d.estado || '-');
+          var p2 = document.createElement('p');
+          p2.innerHTML = '<strong>Disponible:</strong> ' + (d.disponible ? 'Sí' : 'No') + ' • <strong>Fecha ingreso:</strong> ' + (d.fechaIngreso || '-');
+          left.appendChild(h4);
+          left.appendChild(p1);
+          left.appendChild(p2);
+
+          var right = document.createElement('div');
+          right.className = 'actions';
+          var btnEdit = document.createElement('button');
+          btnEdit.type = 'button';
+          btnEdit.className = 'btn-small';
+          btnEdit.textContent = 'Editar unidad';
+          btnEdit.addEventListener('click', function() {
+              var panel = cont.querySelector('.edit-panel');
+              if (!panel) {
+                  panel = buildDetalleEditPanel(d);
+                  cont.appendChild(panel);
+                  panel.style.display = 'block';
+              } else {
+                  panel.style.display = (panel.style.display === 'none' ? 'block' : 'none');
+              }
+          });
+
+          right.appendChild(btnEdit);
+          cont.appendChild(left);
+          cont.appendChild(right);
+          listDiv.appendChild(cont);
+      });
+      modalContent.appendChild(listDiv);
+  }
+
+  function buildDetalleEditPanel(detalle) {
+      var panel = document.createElement('div');
+      panel.className = 'edit-panel';
+      var html = '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<div style="min-width:160px;"><label>Estado</label><select id="up_estado"><option value="">Seleccionar</option><option value="Disponible">Disponible</option><option value="Mantenimiento">Mantenimiento</option><option value="No_disponible">No disponible</option></select></div>' +
+          '<div style="min-width:160px;"><label>Disponible</label><select id="up_disponible"><option value="true">Sí</option><option value="false">No</option></select></div>' +
+          '<div style="min-width:160px;"><label>Fecha ingreso</label><input id="up_fecha" type="date" /></div>' +
+          '</div><div style="margin-top:8px;"><label>Descripción (opcional)</label><textarea id="up_descripcion" style="width:100%;"></textarea></div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;"><button id="up_save" class="btn-small" type="button">Guardar</button><button id="up_cancel" class="btn-small delete" type="button">Cancelar</button></div>';
+      panel.innerHTML = html;
+
+      try { panel.querySelector('#up_estado').value = detalle.estado || ''; } catch(e){}
+      try { panel.querySelector('#up_disponible').value = (detalle.disponible ? 'true' : 'false'); } catch(e){}
+      try { panel.querySelector('#up_fecha').value = detalle.fechaIngreso || ''; } catch(e){}
+      try { panel.querySelector('#up_descripcion').value = detalle.descripcion || ''; } catch(e){}
+
+      panel.querySelector('#up_cancel').addEventListener('click', function() {
+          panel.style.display = 'none';
+      });
+
+      panel.querySelector('#up_save').addEventListener('click', function() {
+          var payload = {
+              estado: panel.querySelector('#up_estado').value || detalle.estado,
+              disponible: (panel.querySelector('#up_disponible').value === 'true'),
+              fechaIngreso: panel.querySelector('#up_fecha').value || detalle.fechaIngreso,
+              descripcion: panel.querySelector('#up_descripcion').value || detalle.descripcion
+          };
+          var idD = detalle.idDetalle || detalle.id_detalle || detalle.id;
+          fetch(DETALLE_URL_BASE + '/' + encodeURIComponent(idD), {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              })
+              .then(function(res) {
+                  if (!res.ok) return readErrorMessage(res).then(function(msg) {throw new Error(msg);});
+                  return res.json().catch(function(){return null;});
+              })
+              .then(function() {
+                  alert('✅ Unidad actualizada');
+                  var herramientaId = detalle.herramienta && (detalle.herramienta.idHerramienta || detalle.herramienta.id);
+                  if (herramientaId) openDetallesModal(herramientaId, detalle.herramienta && detalle.herramienta.nombre);
+                  else {
+                      closeModal();
+                      obtenerHerramientasHoy();
+                  }
+              })
+              .catch(function(err) {
+                  alert('❌ Error al actualizar unidad: ' + err.message);
+              });
+      });
+      return panel;
+  }
+
+  if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', function(ev) {
+      if (ev.target === modalBackdrop) closeModal();
+  });
+  document.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Escape') closeModal();
+  });
+  function closeModal() {
+      if (modalBackdrop) modalBackdrop.style.display = 'none';
+      if (modalBackdrop) modalBackdrop.setAttribute('aria-hidden', 'true');
+      if (modalContent) modalContent.innerHTML = '';
+  }
+  try {
+      if (fechaInput && !fechaInput.value) fechaInput.value = nowIsoDate();
+  } catch (e) {}
+  window.addEventListener('pageshow', function(ev) {
+      if (typeof obtenerHerramientasHoy === 'function') {
+         obtenerHerramientasHoy();
+         setRandomToolCode();
+      }
+  });
+  window.FS = window.FS || {};
+  window.FS.obtenerHoy = obtenerHerramientasHoy;
+})();
+  </script>
+
+  <script src="../user-session.js"></script>
+  <script src="../modo-oscuro.js"></script>
+  <script src="../render-window.js"></script>
+
+  <!-- Mostrar solo módulos permitidos para celador -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var user = null;
+      try {
+        user = JSON.parse(localStorage.getItem('fs_usuario_actual'));
+      } catch(e) {}
+      if (user && user.cargo === 'celador') {
+        var menuItems = document.querySelectorAll('.menu-modulos li');
+        menuItems.forEach(function(item) {
+          var link = item.querySelector('a');
+          if (
+            !link.href.endsWith('equipos-computos.html') &&
+            !link.href.endsWith('equipos-movimientos.html')
+          ) {
+            item.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

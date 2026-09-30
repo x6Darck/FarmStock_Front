@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FarmStock - Inventario</title>
+
+  <!-- Prevenir flashazo del modo oscuro -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fs_dark_mode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+
+  <!-- Usa tu CSS global -->
+  <link rel="stylesheet" href="../CSS/index.css" />
+
+  <style>
+    /* (estilos específicos para inventario) */
+    .tarjetas-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      padding: 12px;
+      box-sizing: border-box;
+      align-content: start;
+      align-content: start;
+      border-radius: 10px;
+      background: transparent;
+    }
+
+    .tarjetas-container .tarjeta {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 98%, transparent 2%), transparent);
+      box-shadow: 0 6px 18px rgba(16,34,31,0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-height: 92px;
+    }
+
+    .tarjetas-container .tarjeta h3 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.1;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .tarjetas-container .tarjeta p { margin:0; font-size:12px; color:var(--muted); }
+
+    .tarjetas-container .tarjeta .acciones { margin-top:6px; display:flex; gap:8px; justify-content:flex-end; }
+
+    .card-qr { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .card-qr img { width:72px; height:72px; object-fit:contain; border-radius:6px; border:1px solid #ddd; background:#fff; }
+
+    .modal-qr { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+    .modal-qr img { max-width:140px; max-height:140px; border-radius:6px; border:1px solid #eee; background:#fff; }
+
+    @media (max-width:560px) {
+      .tarjetas-container { grid-template-columns: 1fr; max-height: calc(100vh - 220px); }
+      .tarjetas-container .tarjeta { min-height:110px; }
+    }
+
+    /* Modal de confirmación personalizado */
+    .confirm-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 15000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .confirm-modal-backdrop.show {
+      display: flex;
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    .confirm-modal {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 0;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      transform: scale(0.9) translateY(-20px);
+      animation: modalBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      overflow: hidden;
+    }
+
+    @keyframes modalBounce {
+      to {
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .confirm-modal-header {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .confirm-modal-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px) rotate(-5deg); }
+      75% { transform: translateX(10px) rotate(5deg); }
+    }
+
+    .confirm-modal-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+        #closeModalInv{
+      background-color: #ee5a6f;
+    }
+
+    .confirm-modal-body {
+      padding: 24px;
+      color: var(--text);
+    }
+
+    .confirm-modal-message {
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .confirm-modal-detail {
+      background: var(--card-bg);
+      border-left: 3px solid #ff6b6b;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .confirm-modal-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .confirm-modal-btn {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .confirm-modal-btn-cancel {
+      background: var(--card-bg);
+      color: var(--text);
+    }
+
+    .confirm-modal-btn-cancel:hover {
+      background: var(--hover-bg);
+      transform: translateY(-1px);
+    }
+
+    .confirm-modal-btn-confirm {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      color: white;
+    }
+
+    .confirm-modal-btn-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+
+    .confirm-modal-btn:active {
+      transform: translateY(0);
+    }
+
+
+  </style>
+</head>
+
+<body>
+  <div class="window-controls">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="top-section">
+        <div class="logo"><img src="../imagenes/Logo.png" alt="Logo" /></div>
+        <ul class="menu-modulos">
+          <li><a href="index.html">Registro Herramientas</a></li>
+          <li><a href="registro-salida.html">Salida Herramientas</a></li>
+          <li><a href="indexInventario.html" class="active">Inventario</a></li>
+          <!-- <li><a href="Notificaciones.html">Notificaciones</a></li> -->
+          <li><a href="estats.html">Estadísticas</a></li>
+          <li><a href="registro-aprendices.html">Aprendices</a></li>
+          <li><a href="equipos-computos.html">Equipos de Cómputo</a></li>
+          <li><a href="equipos-movimientos.html">Movimientos Equipos</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-bottom">
+        <a href="quienes-somos.html" class="somos">👥 Quiénes Somos</a>
+        <div class="night-mode"><span>🌙 Modo noche</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="bienvenida">
+        <a href="perfil.html"><img src="../imagenes/usuario.png" alt="Foto de usuario" class="foto-usuario" /></a>
+        <p><strong>¡Hola Usuario!</strong></p>
+      </div>
+
+      <div class="content-box cuadro-visual">
+        <div class="encabezado-panel">
+          <h1>Inventario</h1>
+          <div class="search-box" style="display:flex;gap:16px;align-items:center;flex-direction:row;">
+            <select id="tipoFiltro" style="padding:8px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--surface);color:var(--text);font-size:13px;">
+              <option value="codigo">Filtrar por código único</option>
+              <option value="informe">Filtrar por código informe</option>
+            </select>
+            <input 
+              type="text" 
+              id="buscarCodigo" 
+              placeholder="🔍 Escribe el código único..." 
+              style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--surface); color: var(--text); width: 240px; font-size: 13px;"
+            />
+            <input 
+              type="text" 
+              id="buscarCodigoInforme" 
+              placeholder="🔍 Escribe el código informe..." 
+              style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--surface); color: var(--text); width: 240px; font-size: 13px; display:none;"
+            />
+            <!-- Botón eliminado para búsqueda automática por código informe -->
+          </div>
+        </div>
+
+        <div id="inventarioLista" class="tarjetas-container" aria-live="polite"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalBackdropInv" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleInv" tabindex="-1">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 id="modalTitleInv">Registro</h3>
+        <div><button id="closeModalInv" class="btn-small" style="background:#9e9e9e;color:#111;" type="button">Cerrar</button></div>
+      </div>
+      <div id="modalContentInv"></div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación personalizado -->
+  <div id="confirmModalBackdrop" class="confirm-modal-backdrop">
+    <div class="confirm-modal">
+      <div class="confirm-modal-header">
+        <div class="confirm-modal-icon">⚠️</div>
+        <h3 class="confirm-modal-title">Confirmar Eliminación</h3>
+      </div>
+      <div class="confirm-modal-body">
+        <p class="confirm-modal-message" id="confirmModalMessage"></p>
+        <div class="confirm-modal-detail" id="confirmModalDetail"></div>
+      </div>
+      <div class="confirm-modal-footer">
+        <button type="button" class="confirm-modal-btn confirm-modal-btn-cancel" id="confirmModalCancel">Cancelar</button>
+        <button type="button" class="confirm-modal-btn confirm-modal-btn-confirm" id="confirmModalConfirm">Sí, Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+      <script src="../FSApiClient.js"></script>
+<script>
+// Funciones utilitarias globales
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function parseIsoToDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  if (isNaN(d)) return null;
+  return d;
+}
+function renderCard(h) {
+  const fechaDisplay = h.fecha ? (parseIsoToDate(h.fecha) ? parseIsoToDate(h.fecha).toLocaleDateString() : h.fecha) : '-';
+  const div = document.createElement('div');
+  div.className = 'tarjeta herramienta-card';
+  div.innerHTML = `
+    <h3>${escapeHtml(h.nombre)}</h3>
+    <p><strong>Estado:</strong> ${escapeHtml(h.estado)}</p>
+    <p><strong>Tipo:</strong> ${escapeHtml(h.tipo)}</p>
+    <p><strong>Ubicación:</strong> ${escapeHtml(h.ubicacion)}</p>
+    <p><strong>Fecha ingreso:</strong> ${escapeHtml(fechaDisplay)}</p>
+    <p><strong>Lote:</strong> ${escapeHtml(h.lote)}</p>
+    <p><strong>Cantidad:</strong> ${escapeHtml(String(h.cantidad))}</p>
+    <div class="acciones">
+      <button class="btn-small detalles" data-id="${escapeHtml(h.idHerramienta || h.id)}" data-nombre="${escapeHtml(h.nombre)}">Ver detalles</button>
+      <button class="btn-small editar" data-id="${escapeHtml(h.idHerramienta || h.id)}" data-nombre="${escapeHtml(h.nombre)}">Editar</button>
+      <button class="btn-small delete eliminar" data-id="${escapeHtml(h.idHerramienta || h.id)}">Eliminar</button>
+    </div>
+  `;
+  if (Array.isArray(h.detalles) && h.detalles.length > 0) {
+    const primerDetalle = h.detalles[0];
+    const codigo = primerDetalle.codigoUnico || primerDetalle.codigo || primerDetalle.idDetalle || null;
+    if (codigo) {
+      const qrContainer = document.createElement('div');
+      qrContainer.className = 'card-qr';
+      const smallImg = document.createElement('img');
+      smallImg.src = '';
+      smallImg.alt = 'QR';
+      const txt = document.createElement('div');
+      txt.innerHTML = '<small>' + escapeHtml(codigo) + '</small>';
+      qrContainer.appendChild(smallImg);
+      qrContainer.appendChild(txt);
+      div.insertBefore(qrContainer, div.firstChild);
+    }
+  }
+  return div;
+}
+
+(function() {
+  var BACKEND = 'http://localhost:3000';
+  var HERR_URL = BACKEND + '/herramienta';
+  var contenedor = document.getElementById('inventarioLista');
+  var tipoFiltro = document.getElementById('tipoFiltro');
+  var buscarCodigoInput = document.getElementById('buscarCodigo');
+  var buscarCodigoInformeInput = document.getElementById('buscarCodigoInforme');
+
+  tipoFiltro.addEventListener('change', function() {
+    if (this.value === 'codigo') {
+      buscarCodigoInput.style.display = '';
+      buscarCodigoInformeInput.style.display = 'none';
+      buscarCodigoInput.focus();
+    } else {
+      buscarCodigoInput.style.display = 'none';
+      buscarCodigoInformeInput.style.display = '';
+      buscarCodigoInformeInput.focus();
+    }
+  });
+
+  // Filtro por código informe
+  let timeoutBusquedaInforme = null;
+  buscarCodigoInformeInput.addEventListener('input', function() {
+    clearTimeout(timeoutBusquedaInforme);
+    const codigo = this.value.trim();
+    timeoutBusquedaInforme = setTimeout(function() {
+      if (tipoFiltro.value !== 'informe') return;
+      if (!codigo) {
+        contenedor.innerHTML = '<p style="color:#b00020;">Debes ingresar un código de informe.</p>';
+        return;
+      }
+      fetch(HERR_URL + '/codigo-informe/' + encodeURIComponent(codigo), {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(function(res) {
+        if (!res.ok) return res.text().then(function(msg) { throw new Error(msg); });
+        return res.json();
+      })
+      .then(function(herramientas) {
+        if (!herramientas || herramientas.length === 0) {
+          contenedor.innerHTML = '<p>No se encontraron herramientas para ese código de informe.</p>';
+          return;
+        }
+        contenedor.innerHTML = '';
+        var grid = document.createElement('div');
+        grid.className = 'tarjetas-container';
+        herramientas.forEach(function(h) {
+          grid.appendChild(renderCard(h));
+        });
+        contenedor.appendChild(grid);
+      })
+      .catch(function(err) {
+        contenedor.innerHTML = '<p style="color:#b00020;">Error: ' + (err.message || err) + '</p>';
+      });
+    }, 300);
+  });
+
+  // Filtro por código único
+  let timeoutBusqueda = null;
+  buscarCodigoInput.addEventListener('input', function() {
+    clearTimeout(timeoutBusqueda);
+    const codigo = this.value.trim();
+    timeoutBusqueda = setTimeout(() => {
+      if (!codigo) {
+        contenedor.innerHTML = '<p style="color:#b00020;">Debes ingresar un código único.</p>';
+        return;
+      }
+      fetch(HERR_URL + '/buscar?codigoUnico=' + encodeURIComponent(codigo), {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(function(res) {
+        if (!res.ok) return res.text().then(function(msg) { throw new Error(msg); });
+        return res.json();
+      })
+      .then(function(herramientas) {
+        if (!herramientas || herramientas.length === 0) {
+          contenedor.innerHTML = '<p>No se encontraron herramientas para ese código único.</p>';
+          return;
+        }
+        contenedor.innerHTML = '';
+        var grid = document.createElement('div');
+        grid.className = 'tarjetas-container';
+        herramientas.forEach(function(h) {
+          grid.appendChild(renderCard(h));
+        });
+        contenedor.appendChild(grid);
+      })
+      .catch(function(err) {
+        contenedor.innerHTML = '<p style="color:#b00020;">Error: ' + (err.message || err) + '</p>';
+      });
+    }, 300);
+  });
+
+})();
+</script>
+
+    <script>
+    (function () {
+      const API = window.FSApiClient;
+      const contenedor = document.getElementById('inventarioLista');
+      const buscarCodigoInput = document.getElementById('buscarCodigo');
+      const modalBackdrop = document.getElementById('modalBackdropInv');
+      const modalContent = document.getElementById('modalContentInv');
+      const modalTitle = document.getElementById('modalTitleInv');
+      const closeModalBtn = document.getElementById('closeModalInv');
+
+      function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+      function parseIsoToDate(str) {
+        if (!str) return null;
+        const d = new Date(str);
+        if (isNaN(d)) return null;
+        return d;
+      }
+      function normalizeTool(h) {
+        const idVal = h.idHerramienta || h.id || h.id_herramienta || h.idHerr || null;
+        return {
+          idHerramienta: idVal,
+          id: idVal,
+          nombre: h.nombre || h.name || '',
+          estado: h.estado || '',
+          tipo: h.tipo || '',
+          ubicacion: h.ubicacion || '',
+          fecha: h.fecha_registro || h.fechaRegistro || h.fecha || '',
+          lote: h.numero_lote || h.numeroLote || h.lote || '',
+          cantidad: (h.cantidad != null) ? h.cantidad : (h.cantidad || 0),
+          descripcion: h.descripcion || h.desc || '',
+          detalles: h.detalles || [],
+          codigoInforme: h.codigoInforme || h.codigo_informe || ''
+        };
+      }
+
+      // ===== CONFIG: BACKEND en local =====
+      const BACKEND_BASE = 'http://localhost:3000'; // <-- backend local
+      function ensureNoSlash(u){ return u && u.endsWith('/') ? u.slice(0,-1) : u; }
+      const BACKEND = ensureNoSlash(BACKEND_BASE);
+
+      // ===== MODAL DE CONFIRMACIÓN PERSONALIZADO =====
+      function showConfirmModal(message, detail) {
+        return new Promise((resolve) => {
+          const backdrop = document.getElementById('confirmModalBackdrop');
+          const messageEl = document.getElementById('confirmModalMessage');
+          const detailEl = document.getElementById('confirmModalDetail');
+          const confirmBtn = document.getElementById('confirmModalConfirm');
+          const cancelBtn = document.getElementById('confirmModalCancel');
+
+          messageEl.textContent = message;
+          detailEl.textContent = detail;
+
+          backdrop.classList.add('show');
+
+          const handleConfirm = () => {
+            backdrop.classList.remove('show');
+            setTimeout(() => backdrop.style.display = 'none', 300);
+            cleanup();
+            resolve(true);
+          };
+
+          const handleCancel = () => {
+            backdrop.classList.remove('show');
+            setTimeout(() => backdrop.style.display = 'none', 300);
+            cleanup();
+            resolve(false);
+          };
+
+          const handleEscape = (e) => {
+            if (e.key === 'Escape') handleCancel();
+          };
+
+          const cleanup = () => {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+            backdrop.removeEventListener('click', handleBackdropClick);
+            document.removeEventListener('keydown', handleEscape);
+          };
+
+          const handleBackdropClick = (e) => {
+            if (e.target === backdrop) handleCancel();
+          };
+
+          confirmBtn.addEventListener('click', handleConfirm);
+          cancelBtn.addEventListener('click', handleCancel);
+          backdrop.addEventListener('click', handleBackdropClick);
+          document.addEventListener('keydown', handleEscape);
+        });
+      }
+
+      // Construye URL absoluta para QR por CÓDIGO UNICO (archivo en backend: qr_<CODIGO>.png)
+      function qrUrlForCodigo(codigoUnico) {
+        if (!codigoUnico) return '';
+        const file = encodeURIComponent('qr_' + codigoUnico) + '.png';
+        return BACKEND + '/qr/' + file;
+      }
+
+      // Construye URL absoluta para QR por NOMBRE de herramienta (si es que guardaste por nombre)
+      function qrUrlForToolName(toolName) {
+        if (!toolName) return '';
+        const file = encodeURIComponent(toolName) + '.png';
+        return BACKEND + '/qr/' + file;
+      }
+
+      // Helper: crear imagen pequeña (para tarjeta)
+      function createSmallQrImg(codigoUnico) {
+        const img = document.createElement('img');
+        const src = qrUrlForCodigo(codigoUnico);
+        img.src = src;
+        img.alt = 'QR ' + (codigoUnico || '');
+        img.onerror = function() { console.warn('[QR] not found:', src); this.style.display = 'none'; };
+        img.onload = function() { /* ok */ };
+        console.log('[QR] small img src ->', src);
+        return img;
+      }
+
+      // Helper: crear bloque QR para modal
+      function createQrElement(qrImgUrl, titleText, idText) {
+        const qrDiv = document.createElement('div');
+        qrDiv.className = 'modal-qr';
+
+        const imgWrap = document.createElement('div');
+        const img = document.createElement('img');
+        img.src = qrImgUrl || '';
+        img.alt = 'QR';
+        img.onerror = function() { console.warn('[QR] modal not found:', qrImgUrl); this.style.display = 'none'; };
+        imgWrap.appendChild(img);
+        qrDiv.appendChild(imgWrap);
+
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = '<strong>' + escapeHtml(titleText || '') + '</strong><br/><small>ID: ' + escapeHtml(String(idText || '')) + '</small>';
+        qrDiv.appendChild(infoDiv);
+
+        console.log('[QR] modal img src ->', qrImgUrl);
+        return qrDiv;
+      }
+
+      // Obtener detalles de herramientas desde el backend
+      async function fetchAllToolsWithDetails() {
+        try {
+          const response = await fetch(BACKEND + '/api/herramienta-detalle');
+          if (response.ok) {
+            const detalles = await response.json();
+            console.log('📦 Detalles cargados:', detalles);
+            return Array.isArray(detalles) ? detalles : [];
+          }
+          console.warn('No se pudieron cargar detalles del backend');
+          return [];
+        } catch (e) {
+          console.warn('Error al cargar detalles:', e);
+          return [];
+        }
+      }
+
+      async function fetchAllTools() {
+        try {
+          console.log('📡 Cargando herramientas desde:', BACKEND + '/herramienta');
+          const response = await fetch(BACKEND + '/herramienta');
+          
+          if (!response.ok) {
+            throw new Error('Backend no responde: ' + response.status);
+          }
+          
+          const herramientas = await response.json();
+          console.log('✅ Herramientas recibidas:', herramientas.length);
+          
+          // Cargar detalles para cada herramienta
+          const herramientasConDetalles = await Promise.all(
+            herramientas.map(async (h) => {
+              const normalized = normalizeTool(h);
+              try {
+                const detailsUrl = BACKEND + '/api/herramienta-detalle/herramienta/' + h.idHerramienta;
+                console.log('📦 Cargando detalles de:', h.nombre, 'desde:', detailsUrl);
+                const detailsResponse = await fetch(detailsUrl);
+                
+                if (detailsResponse.ok) {
+                  const detalles = await detailsResponse.json();
+                  normalized.detalles = detalles;
+                  console.log('✅ Detalles cargados para', h.nombre + ':', detalles.length, 'unidades');
+                } else {
+                  console.warn('⚠️ No hay detalles para', h.nombre);
+                  normalized.detalles = [];
+                }
+              } catch (err) {
+                console.warn('❌ Error al cargar detalles de', h.nombre + ':', err);
+                normalized.detalles = [];
+              }
+              return normalized;
+            })
+          );
+          
+          console.log('🎉 Total herramientas con detalles:', herramientasConDetalles.length);
+          return herramientasConDetalles;
+          
+        } catch (e) {
+          console.error('❌ Error al conectar con backend:', e);
+          console.log('📂 Intentando cargar desde localStorage...');
+          return loadToolsFromLocal();
+        }
+      }
+
+      function loadToolsFromLocal() {
+        try {
+          const raw = localStorage.getItem('fs_local_tools_v1');
+          if (raw) return JSON.parse(raw).map(normalizeTool);
+        } catch (e) {}
+        try {
+          const raw = localStorage.getItem('herramientas');
+          if (raw) return JSON.parse(raw).map(normalizeTool);
+        } catch (e) {}
+        return [];
+      }
+
+      function renderCard(h) {
+        const fechaDisplay = h.fecha ? (parseIsoToDate(h.fecha) ? parseIsoToDate(h.fecha).toLocaleDateString() : h.fecha) : '-';
+        const div = document.createElement('div');
+        div.className = 'tarjeta herramienta-card';
+        div.innerHTML = `
+          <h3>${escapeHtml(h.nombre)}</h3>
+          <p><strong>Estado:</strong> ${escapeHtml(h.estado)}</p>
+          <p><strong>Tipo:</strong> ${escapeHtml(h.tipo)}</p>
+          <p><strong>Ubicación:</strong> ${escapeHtml(h.ubicacion)}</p>
+          <p><strong>Fecha ingreso:</strong> ${escapeHtml(fechaDisplay)}</p>
+          <p><strong>Lote:</strong> ${escapeHtml(h.lote)}</p>
+          <p><strong>Cantidad:</strong> ${escapeHtml(String(h.cantidad))}</p>
+          <div class="acciones">
+            <button class="btn-small detalles" data-id="${escapeHtml(h.idHerramienta || h.id)}" data-nombre="${escapeHtml(h.nombre)}">Ver detalles</button>
+            <button class="btn-small editar" data-id="${escapeHtml(h.idHerramienta || h.id)}" data-nombre="${escapeHtml(h.nombre)}">Editar</button>
+            <button class="btn-small delete eliminar" data-id="${escapeHtml(h.idHerramienta || h.id)}">Eliminar</button>
+          </div>
+        `;
+
+        // mostrar QR pequeño (si hay detalles, tomar el primer detalle)
+        if (Array.isArray(h.detalles) && h.detalles.length > 0) {
+          const primerDetalle = h.detalles[0];
+          const codigo = primerDetalle.codigoUnico || primerDetalle.codigo || primerDetalle.idDetalle || null;
+          if (codigo) {
+            const qrContainer = document.createElement('div');
+            qrContainer.className = 'card-qr';
+            const smallImg = createSmallQrImg(codigo);
+            const txt = document.createElement('div');
+            txt.innerHTML = '<small>' + escapeHtml(codigo) + '</small>';
+            qrContainer.appendChild(smallImg);
+            qrContainer.appendChild(txt);
+            div.insertBefore(qrContainer, div.firstChild);
+          }
+        }
+
+        return div;
+      }
+
+      function applyCodeFilter(items, codigoBusqueda, todosDetalles) {
+        if (!codigoBusqueda || codigoBusqueda.trim() === '') return items;
+        
+        const termino = codigoBusqueda.trim().toLowerCase();
+        console.log('🔍 Buscando por código:', termino);
+        
+        // Filtrar detalles que coincidan con el código buscado
+        const detallesFiltrados = todosDetalles.filter(detalle => {
+          const codigo = (detalle.codigoUnico || '').toLowerCase();
+          return codigo.includes(termino);
+        });
+        
+        console.log('📋 Detalles encontrados:', detallesFiltrados);
+        
+        // Obtener IDs de herramientas que tienen esos códigos
+        const idsHerramientas = [...new Set(detallesFiltrados.map(d => 
+          d.herramienta?.idHerramienta || d.herramienta?.id
+        ))].filter(Boolean);
+        
+        console.log('🔑 IDs de herramientas:', idsHerramientas);
+        
+        // Filtrar herramientas que coincidan
+        return items.filter(h => 
+          idsHerramientas.includes(h.idHerramienta || h.id)
+        );
+      }
+
+      async function mostrarInventario(codigoBusqueda = '') {
+        contenedor.innerHTML = '<p>Cargando inventario...</p>';
+        console.log('🔄 Iniciando carga de inventario...');
+        
+        let all = [];
+        try { 
+          all = await fetchAllTools(); 
+          console.log('✅ Herramientas cargadas:', all.length);
+        } catch (e) { 
+          console.error('❌ Error:', e);
+          all = loadToolsFromLocal(); 
+        }
+        
+        let mostrados = all;
+        
+        // Aplicar filtro de búsqueda por código único
+        if (codigoBusqueda && codigoBusqueda.trim() !== '') {
+          const todosDetalles = await fetchAllToolsWithDetails();
+          mostrados = applyCodeFilter(all, codigoBusqueda, todosDetalles);
+        }
+        
+        contenedor.innerHTML = '';
+        if (!mostrados || mostrados.length === 0) {
+          if (codigoBusqueda && codigoBusqueda.trim() !== '') {
+            contenedor.innerHTML = '<p>🔍 No se encontraron herramientas con el código "<strong>' + escapeHtml(codigoBusqueda) + '</strong>"</p>';
+          } else {
+            contenedor.innerHTML = '<p>No hay herramientas registradas. Verifica que el backend esté corriendo en ' + BACKEND + '</p>';
+          }
+          return;
+        }
+        
+        console.log('📊 Mostrando', mostrados.length, 'herramientas');
+        mostrados.forEach(t => contenedor.appendChild(renderCard(t)));
+      }
+
+      // Edit modal (simplificado) y detalles modal que muestran QR grande por unidad
+      function openEditLoteModal(id, nombre) {
+        if (!id) return;
+        modalTitle.textContent = 'Editar registro';
+        modalContent.innerHTML = '<p>Cargando...</p>';
+        modalBackdrop.classList.add('open');
+        modalBackdrop.setAttribute('aria-hidden','false');
+
+        (async function(){
+          let found = null;
+          try {
+            if (API && typeof API.obtenerTodasHerramientas === 'function') {
+              const all = await API.obtenerTodasHerramientas();
+              found = (Array.isArray(all) ? all.map(normalizeTool).find(x => String(x.idHerramienta) === String(id) || String(x.id) === String(id)) : null);
+            }
+            if (!found) {
+              const local = loadToolsFromLocal();
+              found = local.find(x => String(x.idHerramienta) === String(id) || String(x.id) === String(id));
+            }
+          } catch (e) {
+            console.warn('Error loading for edit', e);
+            const local = loadToolsFromLocal();
+            found = local.find(x => String(x.idHerramienta) === String(id) || String(x.id) === String(id));
+          }
+
+          if (!found) {
+            modalContent.innerHTML = '<p>No se encontró el registro.</p>';
+            return;
+          }
+
+          buildEditModalFromFound(found, String(found.id).startsWith('local-') || !!found._local);
+        })();
+
+        function buildEditModalFromFound(found, isLocal) {
+          modalContent.innerHTML = '';
+          const container = document.createElement('div');
+
+          const nombre = escapeHtml(found.nombre || '');
+          const codigoInforme = escapeHtml(found.codigoInforme || '');
+          // Solo usar found.codigoInforme, sin encabezado extra
+          const html = '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+            '<div style="flex:1;min-width:240px;"><label>Nombre</label><input id="edit_nombre" type="text" value="' + nombre + '" /></div>' +
+            '<div style="flex:1;min-width:180px;"><label>Estado</label><select id="edit_estado"><option value="">Seleccionar</option><option value="Disponible">Disponible</option><option value="Mantenimiento">Mantenimiento</option><option value="No_disponible">No disponible</option></select></div>' +
+            '<div style="flex:1;min-width:180px;"><label>Tipo</label><select id="edit_tipo"><option value="">Seleccionar</option><option value="Manual">Manual</option><option value="Electrica">Eléctrica</option></select></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">' +
+            '<div style="flex:1;min-width:180px;"><label>Ubicación</label><select id="edit_ubicacion"><option value="">Seleccionar</option><option value="Bodega">Bodega</option><option value="Taller">Taller</option></select></div>' +
+            '<div style="flex:1;min-width:180px;"><label>Fecha registro</label><input id="edit_fecha" type="date" value="' + escapeHtml(String(found.fecha || '')) + '" /></div>' +
+            '<div style="flex:1;min-width:180px;"><label>Número lote</label><select id="edit_lote"><option value="">Seleccionar</option><option value="Lote 1">Lote 1</option><option value="Lote 2">Lote 2</option></select></div>' +
+            '</div>' +
+            '<div style="flex:1;min-width:180px;margin-top:10px;"><label>Código informe</label><input id="edit_codigoInforme" type="text" value="' + codigoInforme + '" readonly /></div>' +
+            '<div style="margin-top:10px;"><label>Cantidad</label><input id="edit_cantidad" type="number" min="0" value="' + escapeHtml(String(found.cantidad || 0)) + '" /></div>' +
+            '<div style="margin-top:10px;"><label>Descripción</label><textarea id="edit_descripcion" style="width:100%;">' + escapeHtml(found.descripcion || '') + '</textarea></div>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;"><button id="saveEditInv" class="btn-small" type="button">Guardar</button><button id="cancelEditInv" class="btn-small delete" type="button">Cancelar</button></div>';
+          container.innerHTML = html;
+          modalContent.appendChild(container);
+
+          try { document.getElementById('edit_estado').value = found.estado || ''; } catch(e){}
+          try { document.getElementById('edit_tipo').value = found.tipo || ''; } catch(e){}
+          try { document.getElementById('edit_ubicacion').value = found.ubicacion || ''; } catch(e){}
+          try { document.getElementById('edit_lote').value = found.lote || found.numero_lote || ''; } catch(e){}
+
+          document.getElementById('cancelEditInv').addEventListener('click', () => closeModal());
+
+          document.getElementById('saveEditInv').addEventListener('click', async function(){
+            const payload = {
+              nombre: (document.getElementById('edit_nombre').value || '').trim(),
+              descripcion: (document.getElementById('edit_descripcion').value || '').trim(),
+              estado: (document.getElementById('edit_estado').value || '').trim(),
+              tipo: (document.getElementById('edit_tipo').value || '').trim(),
+              ubicacion: (document.getElementById('edit_ubicacion').value || '').trim(),
+              cantidad: parseInt(document.getElementById('edit_cantidad').value || '0',10) || 0,
+              fechaRegistro: (document.getElementById('edit_fecha').value || ''),
+              numeroLote: (document.getElementById('edit_lote').value || ''),
+              codigoInforme: (document.getElementById('edit_codigoInforme').value || '').trim()
+            };
+            if (!payload.nombre || !payload.estado) {
+              alert('Completa al menos nombre y estado.');
+              return;
+            }
+
+            try {
+              if (API && typeof API.actualizarHerramienta === 'function') {
+                await API.actualizarHerramienta(found.idHerramienta || found.id, payload);
+              } else {
+                const response = await fetch(BACKEND + '/herramienta/' + encodeURIComponent(found.idHerramienta || found.id), {
+                  method: 'PUT',
+                  headers: {'Content-Type':'application/json'},
+                  body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                  const errorData = await response.text();
+                  let errorMessage = 'Error al actualizar';
+                  try {
+                    const errorJson = JSON.parse(errorData);
+                    errorMessage = errorJson.message || errorJson.error || errorData;
+                  } catch(e) {
+                    errorMessage = errorData || `Error HTTP ${response.status}`;
+                  }
+                  throw new Error(errorMessage);
+                }
+              }
+              alert('Registro actualizado en servidor.');
+              closeModal();
+              mostrarInventario(buscarCodigoInput.value);
+            } catch (e) {
+              console.error('Error al actualizar:', e);
+              alert('Error: ' + (e.message || e));
+            }
+          });
+        }
+      }
+
+      async function openDetallesModal(herramientaId, nombre) {
+        if (!herramientaId) return;
+        modalTitle.textContent = 'Detalles: ' + (nombre || '');
+        modalContent.innerHTML = '<p>Cargando detalles...</p>';
+        modalBackdrop.classList.add('open');
+        modalBackdrop.setAttribute('aria-hidden','false');
+
+        const qrImgUrl = qrUrlForToolName(nombre);
+
+        try {
+          let detalles = [];
+          if (API && typeof API.obtenerDetalles === 'function') {
+            detalles = await API.obtenerDetalles(herramientaId);
+          } else {
+            const local = loadToolsFromLocal();
+            const t = local.find(x => String(x.idHerramienta) === String(herramientaId) || String(x.id) === String(herramientaId));
+            detalles = (t && t.detalles) ? t.detalles : [];
+          }
+          renderDetallesList(detalles || [], herramientaId, nombre, qrImgUrl);
+        } catch (err) {
+          console.warn('DETALLE failed', err);
+          const local = loadToolsFromLocal();
+          const t = local.find(x => String(x.idHerramienta) === String(herramientaId) || String(x.id) === String(herramientaId));
+          if (t) renderDetallesList(t.detalles || [], herramientaId, nombre, qrImgUrl);
+          else {
+            modalBackdrop.classList.remove('open');
+            modalBackdrop.setAttribute('aria-hidden','true');
+            alert('No se pudieron cargar los detalles.');
+          }
+        }
+
+        function renderDetallesList(detalles, herramientaId, nombre, qrImgUrl) {
+          modalContent.innerHTML = '';
+          const qrElement = createQrElement(qrImgUrl, nombre || '', herramientaId);
+          modalContent.appendChild(qrElement);
+
+          if (!Array.isArray(detalles) || detalles.length === 0) {
+            modalContent.innerHTML += '<p>No hay detalles.</p>';
+            return;
+          }
+          const listDiv = document.createElement('div');
+          listDiv.className = 'modal-list';
+          detalles.forEach(function(d, idx){
+            // Contenedor principal que incluirá tanto la tarjeta como el panel de edición
+            const itemWrapper = document.createElement('div');
+            itemWrapper.style.marginBottom = '20px';
+            
+            const cont = document.createElement('div');
+            cont.className = 'tarjeta';
+            cont.style.display = 'grid';
+            cont.style.gridTemplateColumns = '1fr 2fr 1fr';
+            cont.style.gap = '30px';
+            cont.style.alignItems = 'center';
+            cont.style.padding = '20px';
+
+            // COLUMNA IZQUIERDA: QR centrado con diseño de caja
+            const leftColumn = document.createElement('div');
+            leftColumn.style.display = 'flex';
+            leftColumn.style.flexDirection = 'column';
+            leftColumn.style.alignItems = 'center';
+            leftColumn.style.justifyContent = 'center';
+            leftColumn.style.padding = '20px';
+            leftColumn.style.backgroundColor = '#f5f5f5';
+            leftColumn.style.borderRadius = '10px';
+            leftColumn.style.border = '2px solid #ddd';
+            leftColumn.style.minHeight = '150px';
+
+            // mostrar QR por código único del detalle
+            const codigo = d.codigoUnico || d.codigo || d.idDetalle || d.id;
+            const img = document.createElement('img');
+            img.src = codigo ? qrUrlForCodigo(codigo) : '';
+            img.alt = 'QR ' + (codigo || '');
+            img.style.width = '100px';
+            img.style.height = '100px';
+            img.style.objectFit = 'contain';
+            img.style.backgroundColor = '#fff';
+            img.style.padding = '8px';
+            img.style.borderRadius = '8px';
+            img.style.border = '1px solid #e0e0e0';
+            img.onerror = function() { console.warn('[QR] detalle not found:', img.src); this.style.display = 'none'; };
+            leftColumn.appendChild(img);
+
+            // COLUMNA CENTRO: Información
+            const centerColumn = document.createElement('div');
+            centerColumn.style.display = 'flex';
+            centerColumn.style.flexDirection = 'column';
+            centerColumn.style.gap = '8px';
+            const nombreUnit = (d.herramienta && d.herramienta.nombre) ? d.herramienta.nombre : ('Unidad ' + (idx + 1));
+            const h4 = document.createElement('h4');
+            h4.textContent = nombreUnit + ' — ' + (d.codigoUnico || '');
+            h4.style.margin = '0';
+            const p1 = document.createElement('p');
+            p1.innerHTML = '<strong>Estado:</strong> ' + escapeHtml(d.estado || '-');
+            p1.style.margin = '4px 0';
+            const p2 = document.createElement('p');
+            p2.innerHTML = '<strong>Disponible:</strong> ' + (d.disponible ? 'Sí' : 'No') + ' • <strong>Fecha ingreso:</strong> ' + (d.fechaIngreso || '-');
+            p2.style.margin = '4px 0';
+            centerColumn.appendChild(h4);
+            centerColumn.appendChild(p1);
+            centerColumn.appendChild(p2);
+
+            // COLUMNA DERECHA: Botones
+            const rightColumn = document.createElement('div');
+            rightColumn.style.display = 'flex';
+            rightColumn.style.flexDirection = 'column';
+            rightColumn.style.gap = '10px';
+            rightColumn.style.alignItems = 'stretch';
+
+            const btnPrintQR = document.createElement('button');
+            btnPrintQR.type = 'button';
+            btnPrintQR.className = 'btn-small';
+            btnPrintQR.style.background = '#4CAF50';
+            btnPrintQR.style.color = '#fff';
+            btnPrintQR.style.fontSize = '12px';
+            btnPrintQR.style.padding = '8px 12px';
+            btnPrintQR.style.border = 'none';
+            btnPrintQR.style.borderRadius = '5px';
+            btnPrintQR.style.cursor = 'pointer';
+            btnPrintQR.textContent = '🖨️ Imprimir';
+            btnPrintQR.addEventListener('click', async function(){
+              const codigoPrint = d.codigoUnico || d.codigo;
+              if (!codigoPrint) {
+                alert('❌ No se encontró el código único');
+                return;
+              }
+              try {
+                const qrUrl = BACKEND + '/api/herramienta-detalle/qr/' + encodeURIComponent(codigoPrint);
+                const response = await fetch(qrUrl);
+                if (!response.ok) {
+                  throw new Error('No se pudo obtener el código QR');
+                }
+                const blob = await response.blob();
+                const imgUrl = URL.createObjectURL(blob);
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                    <title>Imprimir QR - ${codigoPrint}</title>
+                    <style>
+                      @page { margin: 0.5cm; }
+                      body {
+                        margin: 0;
+                        padding: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        background: #fff;
+                        font-family: Arial, sans-serif;
+                      }
+                      .print-box {
+                        display: flex;
+                        align-items: center;
+                        border: 2px solid #222;
+                        border-radius: 8px;
+                        padding: 10px 18px;
+                        background: #fff;
+                        min-width: 220px;
+                        max-width: 320px;
+                      }
+                      .print-qr {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 80px;
+                        height: 80px;
+                        border: 2px solid #222;
+                        border-radius: 10px;
+                        margin-right: 18px;
+                        background: #fff;
+                      }
+                      .print-qr img {
+                        width: 60px;
+                        height: 60px;
+                        object-fit: contain;
+                        display: block;
+                      }
+                      .print-info {
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        gap: 4px;
+                      }
+                      .print-info .nombre {
+                        font-size: 13px;
+                        font-weight: 700;
+                        color: #222;
+                      }
+                      .print-info .codigo {
+                        font-size: 11px;
+                        color: #444;
+                        font-weight: 600;
+                      }
+                      .print-info .fecha {
+                        font-size: 10px;
+                        color: #555;
+                      }
+                      @media print {
+                        body { padding: 0; }
+                      }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="print-box">
+                      <div class="print-qr"><img src="${imgUrl}" alt="QR"></div>
+                      <div class="print-info">
+                        <div class="nombre">${nombreUnit}</div>
+                        <div class="codigo">${codigoPrint}</div>
+                        <div class="fecha">${new Date().toLocaleDateString('es-ES')}</div>
+                      </div>
+                    </div>
+                    <script>
+                      window.onload = function() {
+                        setTimeout(function() {
+                          window.print();
+                        }, 500);
+                      };
+                      window.onafterprint = function() {
+                        window.close();
+                      };
+                    <\/script>
+                  </body>
+                  </html>
+                `);
+                printWindow.document.close();
+              } catch (error) {
+                console.error('❌ Error al imprimir:', error);
+                alert('❌ Error al imprimir el código QR. Verifica que el backend esté corriendo.');
+              }
+            });
+
+            const btnEdit = document.createElement('button');
+            btnEdit.type = 'button';
+            btnEdit.className = 'btn-small';
+            btnEdit.style.padding = '8px 12px';
+            btnEdit.style.fontSize = '12px';
+            btnEdit.style.borderRadius = '5px';
+            btnEdit.style.cursor = 'pointer';
+            btnEdit.textContent = 'Editar unidad';
+            btnEdit.addEventListener('click', function(){
+              const existingPanel = itemWrapper.querySelector('.edit-panel');
+              if (existingPanel) {
+                existingPanel.remove();
+              } else {
+                const p = buildDetalleEditPanel(d, herramientaId);
+                itemWrapper.appendChild(p);
+              }
+            });
+
+            const btnDelete = document.createElement('button');
+            btnDelete.type = 'button';
+            btnDelete.className = 'btn-small delete';
+            btnDelete.textContent = 'Eliminar unidad';
+            btnDelete.addEventListener('click', async function(){
+              const idD = d.idDetalle || d.id_detalle || d.id;
+              const nombreUnidad = (d.herramienta && d.herramienta.nombre) ? d.herramienta.nombre : 'esta unidad';
+              const codigoUnidad = d.codigoUnico || idD;
+              
+              // Mostrar modal de confirmación personalizado
+              const confirmed = await showConfirmModal(
+                '¿Está seguro de que desea eliminar esta unidad?',
+                `${nombreUnidad} (${codigoUnidad})`
+              );
+
+              if (!confirmed) return;
+
+              try {
+                console.log('🗑️ Eliminando unidad:', idD);
+                
+                const response = await fetch(BACKEND + '/api/herramienta-detalle/' + encodeURIComponent(idD), {
+                  method: 'DELETE'
+                });
+                
+                if (!response.ok && response.status !== 204) {
+                  const errorData = await response.text();
+                  let errorMessage = 'Error al eliminar';
+                  try {
+                    const errorJson = JSON.parse(errorData);
+                    errorMessage = errorJson.message || errorJson.error || errorData;
+                  } catch(e) {
+                    errorMessage = errorData || `Error HTTP ${response.status}`;
+                  }
+                  throw new Error(errorMessage);
+                }
+                
+                console.log('✅ Unidad eliminada');
+                alert('✅ Unidad eliminada exitosamente');
+                
+                // Recargar el modal de detalles
+                await openDetallesModal(herramientaId, nombre);
+                
+                // Recargar también el inventario principal en segundo plano
+                mostrarInventario(buscarCodigoInput.value);
+                
+              } catch (e) {
+                console.error('❌ Error al eliminar detalle:', e);
+                alert('❌ Error al eliminar:\n\n' + (e.message || e));
+              }
+            });
+
+            rightColumn.appendChild(btnPrintQR);
+            rightColumn.appendChild(btnEdit);
+            rightColumn.appendChild(btnDelete);
+
+            cont.appendChild(leftColumn);
+            cont.appendChild(centerColumn);
+            cont.appendChild(rightColumn);
+
+            itemWrapper.appendChild(cont);
+            listDiv.appendChild(itemWrapper);
+          });
+          modalContent.appendChild(listDiv);
+        }
+      }
+
+      function buildDetalleEditPanel(detalle, herramientaId) {
+        const panel = document.createElement('div');
+        panel.className = 'edit-panel';
+        panel.style.display = 'block';
+        panel.style.marginTop = '20px';
+        panel.style.padding = '25px';
+        panel.style.backgroundColor = 'var(--surface)';
+        panel.style.borderRadius = '12px';
+        panel.style.border = '1px solid var(--card-border)';
+        panel.style.width = '100%';
+        panel.style.boxSizing = 'border-box';
+        panel.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        
+        panel.innerHTML = '<h4 style="margin-top:0;margin-bottom:20px;color:var(--text);font-size:18px;font-weight:600;">Editar Unidad</h4>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px;">' +
+          '<div><label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:13px;">Estado</label><select class="up_estado" style="width:100%;padding:10px;border:1px solid var(--card-border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);"><option value="">Seleccionar</option><option value="Disponible">Disponible</option><option value="Mantenimiento">Mantenimiento</option><option value="No_disponible">No disponible</option></select></div>' +
+          '<div><label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:13px;">Disponible</label><select class="up_disponible" style="width:100%;padding:10px;border:1px solid var(--card-border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);"><option value="true">Sí</option><option value="false">No</option></select></div>' +
+          '<div><label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:13px;">Fecha ingreso</label><input class="up_fecha" type="date" style="width:100%;padding:10px;border:1px solid var(--card-border);border-radius:6px;font-size:14px;background:var(--surface);color:var(--text);" /></div>' +
+          '</div>' +
+          '<div style="margin-bottom:20px;"><label style="display:block;margin-bottom:8px;font-weight:600;color:var(--text);font-size:13px;">Comentario</label><textarea class="up_comentario" style="width:100%;padding:12px;border:1px solid var(--card-border);border-radius:6px;min-height:100px;resize:vertical;font-size:14px;background:var(--surface);color:var(--text);font-family:inherit;"></textarea></div>' +
+          '<div style="display:flex;gap:12px;justify-content:flex-end;"><button class="up_save btn-small" type="button" style="background:#4CAF50;color:#fff;padding:10px 24px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;">Guardar</button><button class="up_cancel btn-small delete" type="button" style="background:#f44336;color:#fff;padding:10px 24px;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:14px;">Cancelar</button></div>';
+
+        try { panel.querySelector('.up_estado').value = detalle.estado || ''; } catch(e){}
+        try { panel.querySelector('.up_disponible').value = detalle.disponible ? 'true' : 'false'; } catch(e){}
+        try { panel.querySelector('.up_fecha').value = detalle.fechaIngreso || ''; } catch(e){}
+        try { panel.querySelector('.up_comentario').value = detalle.comentario || ''; } catch(e){}
+
+        panel.querySelector('.up_cancel').addEventListener('click', function(){ panel.remove(); });
+
+        panel.querySelector('.up_save').addEventListener('click', async function(){
+          const payload = {
+            estado: panel.querySelector('.up_estado').value || detalle.estado,
+            disponible: panel.querySelector('.up_disponible').value === 'true',
+            fechaIngreso: panel.querySelector('.up_fecha').value || detalle.fechaIngreso,
+            comentario: panel.querySelector('.up_comentario').value || ''
+          };
+
+          const idD = detalle.idDetalle || detalle.id_detalle || detalle.id;
+
+          try {
+            if (API && typeof API.actualizarDetalle === 'function') {
+              await API.actualizarDetalle(idD, payload, herramientaId);
+            } else {
+              const response = await fetch(BACKEND + '/api/herramienta-detalle/' + encodeURIComponent(idD), {
+                method: 'PUT',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+              });
+              if (!response.ok) {
+                const errorData = await response.text();
+                let errorMessage = 'Error al actualizar detalle';
+                try {
+                  const errorJson = JSON.parse(errorData);
+                  errorMessage = errorJson.message || errorJson.error || errorData;
+                } catch(e) {
+                  errorMessage = errorData || `Error HTTP ${response.status}`;
+                }
+                throw new Error(errorMessage);
+              }
+            }
+            alert('Unidad actualizada');
+            panel.remove();
+            openDetallesModal(herramientaId);
+          } catch (e) {
+            console.error('Error al actualizar detalle:', e);
+            alert('Error: ' + (e.message || e));
+          }
+        });
+
+        return panel;
+      }
+
+      function closeModal() {
+        modalBackdrop.classList.remove('open');
+        modalBackdrop.setAttribute('aria-hidden','true');
+        modalContent.innerHTML = '';
+      }
+
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+      modalBackdrop.addEventListener('click', function(ev) { if (ev.target === modalBackdrop) closeModal(); });
+      document.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') closeModal(); });
+
+      let eliminandoEnProceso = false;
+
+contenedor.addEventListener('click', function(ev){
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const nombre = btn.dataset.nombre;
+
+  if (btn.classList.contains('detalles')) {
+    openDetallesModal(id, nombre);
+  } else if (btn.classList.contains('editar')) {
+    openEditLoteModal(id, nombre);
+  } else if (btn.classList.contains('eliminar')) {
+    eliminarHerramienta(id, nombre);
+  }
+});
+
+async function eliminarHerramienta(id, nombre) {
+  const thisBtn = document.querySelector(`button.eliminar[data-id="${id}"]`);
+  if (!id) return;
+  if (thisBtn) thisBtn.disabled = true;
+
+  try {
+    const confirmed = await showConfirmModal(
+      '¿Está seguro de que desea eliminar esta herramienta completa?',
+      `${nombre} (ID: ${id})\n\nEsto eliminará la herramienta y todas sus unidades.`
+    );
+
+    if (!confirmed) return;
+
+    const response = await fetch(BACKEND + '/herramienta/' + encodeURIComponent(id), {
+      method: 'DELETE'
+    });
+
+    if (!response.ok && response.status !== 204) {
+      const errorData = await response.text();
+      // OPCIONAL: Personalizar mensaje por Foreign Key
+      if (errorData.includes('foreign key constraint')) {
+        alert('❌ No puedes eliminar esta herramienta porque tiene préstamos asociados. Devuelve o elimina los préstamos primero.');
+      } else {
+        alert('❌ Error al eliminar la herramienta:\n\n' + (errorData || 'Error desconocido'));
+      }
+      return;
+    }
+
+    alert('✅ Herramienta eliminada exitosamente');
+    await mostrarInventario(buscarCodigoInput.value);
+
+  } catch (e) {
+    alert('❌ Error inesperado:\n\n' + (e.message || e));
+  } finally {
+    if (thisBtn) thisBtn.disabled = false;
+  }
+}
+
+      // Búsqueda con debounce para mejor rendimiento
+      let timeoutBusqueda = null;
+      buscarCodigoInput.addEventListener('input', function() {
+        clearTimeout(timeoutBusqueda);
+        const codigo = this.value.trim();
+        timeoutBusqueda = setTimeout(() => {
+          if (!codigo) {
+            contenedor.innerHTML = '<p style="color:#b00020;">Debes ingresar un código único.</p>';
+            return;
+          }
+          fetch(HERR_URL + '/buscar?codigoUnico=' + encodeURIComponent(codigo), {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          })
+          .then(function(res) {
+            if (!res.ok) return res.text().then(function(msg) { throw new Error(msg); });
+            return res.json();
+          })
+          .then(function(herramientas) {
+            if (!herramientas || herramientas.length === 0) {
+              contenedor.innerHTML = '<p>No se encontraron herramientas para ese código único.</p>';
+              return;
+            }
+            contenedor.innerHTML = '';
+            var grid = document.createElement('div');
+            grid.className = 'tarjetas-container';
+            herramientas.forEach(function(h) {
+              grid.appendChild(renderCard(h));
+            });
+            contenedor.appendChild(grid);
+          })
+          .catch(function(err) {
+            contenedor.innerHTML = '<p style="color:#b00020;">Error: ' + (err.message || err) + '</p>';
+          });
+        }, 300); // Esperar 300ms después de que el usuario deje de escribir
+      });
+
+      // Limpiar búsqueda al presionar Escape
+      buscarCodigoInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          this.value = '';
+          mostrarInventario('');
+        }
+      });
+
+      // debug: mostrar backend base en consola
+      console.log('[CONFIG] BACKEND =', BACKEND);
+
+      // inicializar
+      mostrarInventario();
+    })();
+  </script>
+
+  <script src="../user-session.js"></script>
+  <script src="../modo-oscuro.js"></script>
+  <script src="../render-window.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FarmStock - Estadísticas</title>
+    <!-- Prevenir flashazo del modo oscuro -->
+    <script>
+      (function() {
+        const saved = localStorage.getItem('fs_dark_mode');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+        if (shouldBeDark) {
+          document.documentElement.classList.add('dark-mode');
+          document.body.classList.add('dark-mode');
+        }
+      })();
+    </script>
+    <!-- Enlace al CSS global (unifica sidebar / proporciones / animaciones) -->
+    <link rel="stylesheet" href="../CSS/index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="window-controls">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+    </svg>
+    </button>
+    </div>
+
+    <div class="container">
+        <!-- Menú lateral -->
+        <aside class="sidebar">
+            <div class="top-section">
+                <div class="logo"><img src="../imagenes/Logo.png" alt="Logo del sitio" /></div>
+                <ul class="menu-modulos">
+                    <li><a href="../HTML/index.html">Registro Herramientas</a></li>
+                    <li><a href="../HTML/registro-salida.html">Salida Herramientas</a></li>
+                    <li><a href="../HTML/indexInventario.html">Inventario</a></li>
+                    <li><a href="notificaciones.html">Notificaciones</a></li>
+                    <li><a href="../HTML/estats.html" class="active">Estadísticas</a></li>
+                    <li><a href="../HTML/registro-aprendices.html">Aprendices</a></li>
+                    <li><a href="equipos-computos.html">Equipos de Cómputo</a></li>
+                    <li><a href="equipos-movimientos.html">Movimientos Equipos</a></li>
+                        
+                </ul>
+            <div class="sidebar-bottom">
+                <a href="quienes-somos.html" class="somos active">👥 Quiénes Somos</a>
+                <div class="night-mode"><span>🌙 Modo noche</span></div>
+            </div>
+        </aside>
+
+        <!-- Panel principal -->
+        <main class="main-content">
+            <header class="header">
+                <div class="bienvenida">
+                    <a href="perfil.html">
+                        <img src="../imagenes/usuario.png" alt="Foto de usuario" class="foto-usuario" />
+                    </a>
+                    <p><strong>¡Hola Usuario!</strong></p>
+                </div>
+            </header>
+
+            <section class="content">
+                <div class="content-box charts">
+                    <div class="charts-header">
+                        <h1>Informes</h1>
+                        <div class="actions">
+                            <button class="green">Descargar informe</button>
+                            <select id="proveedor" class="light">
+                                <option value="">Cambiar proveedor</option>
+                                <option value="prov1">Proveedor 1</option>
+                            </select>
+                            <select id="mes" class="light" aria-label="Seleccionar mes">
+                                <option value="">Mes</option>
+                            </select>
+                            <select id="dia" class="light" aria-label="Seleccionar día">
+                                <option value="">Día</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="charts-content">
+                        <div class="chart-container line-chart">
+                            <h3>Estadística de uso</h3>
+                            <canvas id="areaChart"></canvas>
+                            <button class="dropdown">Cambiar herramienta ⌄</button>
+                        </div>
+
+                        <div class="chart-container donut-chart">
+                            <div class="month-nav"><span>←</span><strong>Marzo</strong><span>→</span></div>
+                            <div class="donut"><canvas id="donutChart"></canvas><div class="donut-text"><p><strong>Total</strong><br>100 herramientas</p></div></div>
+                            <div class="legend"><span><span class="green-dot"></span> Buen estado</span><span><span class="yellow-dot"></span> En mantenimiento</span><span><span class="red-dot"></span> Mal estado</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-box tabla">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th></th><th>ID herramienta</th><th>Herramienta</th><th>Préstamos</th><th>Daños</th><th>Mantenimientos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><input type="checkbox" /></td><td>1002</td><td>🛠️ Pala</td><td>23</td><td>5</td><td>23</td></tr>
+                            <tr><td><input type="checkbox" /></td><td>1002</td><td>🔧 Motosierra</td><td>24</td><td>10</td><td>21</td></tr>
+                            <tr><td><input type="checkbox" /></td><td>1003</td><td>⛏️ Picos</td><td>24</td><td>4</td><td>22</td></tr>
+                        </tbody>
+                    </table>
+                    <button id="generar-pdf-lote" class="green" style="margin-top: 16px;">Generar PDF del lote</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        (function() {
+            const mesSelect = document.getElementById('mes');
+            const diaSelect = document.getElementById('dia');
+            function rellenarDias() {
+                if (!mesSelect || !diaSelect) return;
+                const mes = parseInt(mesSelect.value, 10);
+                const year = new Date().getFullYear();
+                diaSelect.innerHTML = '';
+                const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Día'; diaSelect.appendChild(placeholder);
+                if (!isNaN(mes) && mes >= 1 && mes <= 12) {
+                    const diasEnMes = new Date(year, mes, 0).getDate();
+                    for (let d = 1; d <= diasEnMes; d++) {
+                        const opt = document.createElement('option'); opt.value = d; opt.textContent = d; diaSelect.appendChild(opt);
+                    }
+                }
+            }
+            if (mesSelect) { mesSelect.value = String(new Date().getMonth() + 1); rellenarDias(); mesSelect.addEventListener('change', rellenarDias); }
+        })();
+    </script>
+
+    <script src="../user-session.js"></script>
+    <script src="../modo-oscuro.js"></script>
+    <script src="../render-window.js"></script>
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+    document.getElementById('generar-pdf-lote').addEventListener('click', function() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text('Resumen de Mantenimientos por Lote', 10, 15);
+        const table = document.querySelector('.content-box.tabla table');
+        if (!table) {
+            alert('No se encontró la tabla de herramientas.');
+            return;
+        }
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        let y = 30;
+        doc.setFontSize(12);
+        doc.text('ID', 10, y);
+        doc.text('Herramienta', 35, y);
+        doc.text('Préstamos', 90, y);
+        doc.text('Daños', 120, y);
+        doc.text('Mantenimientos', 150, y);
+        y += 8;
+        rows.forEach(tr => {
+            const tds = tr.querySelectorAll('td');
+            if (tds.length >= 6) {
+                doc.text(String(tds[1].textContent).trim(), 10, y);
+                doc.text(String(tds[2].textContent).trim(), 35, y);
+                doc.text(String(tds[3].textContent).trim(), 90, y);
+                doc.text(String(tds[4].textContent).trim(), 120, y);
+                doc.text(String(tds[5].textContent).trim(), 150, y);
+                y += 8;
+                if (y > 270) {
+                    doc.addPage();
+                    y = 20;
+                }
+            }
+        });
+        doc.save('informe_lote.pdf');
+    });
+    </script>
+</body>
+</html>

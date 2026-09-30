@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FarmStock - Historial de herramientas</title>
+
+  <!-- Prevenir flashazo del modo oscuro -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fs_dark_mode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = saved === null ? prefersDark : saved === 'true';
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    })();
+  </script>
+
+  <!-- Usar solo el CSS global para mantener el mismo tema -->
+  <link rel="stylesheet" href="../CSS/index.css" />
+
+  <style>
+    
+    /* Ajustes locales para que coincida con la estética del resto */
+    .content-box.registro {
+      padding: 18px;
+      border-radius: 14px;
+    }
+
+    .registro-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .registro-header h2 { margin:0; font-weight:900; color:var(--text); }
+    .filtros { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .filtros select, .filtros input { padding:8px 10px; border-radius:10px; border:1px solid var(--card-border); background: color-mix(in srgb,var(--surface) 96%, transparent 4%); color:var(--text); }
+
+    .tabla { width:100%; border-collapse:collapse; margin-top:10px; }
+    .tabla thead th { text-align:left; padding:10px; color:var(--muted); font-weight:800; }
+    .tabla tbody td { padding:10px; border-top:1px solid rgba(255,255,255,0.02); color:var(--text); }
+
+    .btn-small { padding:8px 10px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+    .btn-green { background: linear-gradient(180deg, var(--accent-400), var(--accent-600)); color:#fff; }
+    .btn-outline { background: color-mix(in srgb,var(--surface) 96%, transparent 4%); border:1px solid var(--card-border); color:var(--text); }
+    .btn-delete { background: linear-gradient(180deg, #f44336, #d32f2f); color:#fff; border:none; }
+    #closeRegistrar{
+      background-color: #d32f2f;
+    }
+    /* Modal shared styles */
+    .modal-backdrop {
+      display:none;
+      position: fixed;
+      inset:0;
+      background: rgba(0,0,0,0.45);
+      z-index: 10000;
+      justify-content:center;
+      align-items:center;
+      padding:18px;
+    }
+    .modal-backdrop.open { display:flex; }
+    .modal {
+      width:100%; max-width:700px;
+      background:var(--surface);
+      border-radius:14px;
+      padding:18px;
+      border:1px solid var(--card-border);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.5);
+    }
+    .modal h3 { margin:0 0 12px 0; font-size:18px; }
+    .modal .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .modal label { font-weight:700; font-size:13px; color:var(--muted); margin-bottom:6px; display:block; }
+    .modal input[type="text"], .modal select {
+      padding:9px 10px; border-radius:10px; border:1px solid var(--card-border); background: color-mix(in srgb,var(--surface) 96%, transparent 4%); color:var(--text);
+    }
+    .modal .controls { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+
+    .status { margin-left:8px; font-weight:700; color:var(--muted); font-size:13px; }
+
+    @media (max-width: 700px) {
+      .modal .row { flex-direction:column; align-items:stretch; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="window-controls">
+    <button id="minimize" title="Minimizar" type="button">─</button>
+    <button id="maximize" title="Maximizar" type="button">▢</button>
+    <button id="close" title="Cerrar" type="button">✕</button>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="top-section">
+        <div class="logo"><img src="../imagenes/Logo.png" alt="Logo del sitio" /></div>
+        <ul class="menu-modulos">
+          <li><a href="index.html">Registro Herramientas</a></li>
+          <li><a href="registro-salida.html" class="active">Salida Herramientas</a></li>
+          <li><a href="indexInventario.html">Inventario</a></li>
+          <!-- <li><a href="Notificaciones.html">Notificaciones</a></li> -->
+          <li><a href="estats.html">Estadísticas</a></li>
+          <li><a href="registro-aprendices.html">Aprendices</a></li>
+          <li><a href="equipos-computos.html">Equipos de Cómputo</a></li>
+          <li><a href="equipos-movimientos.html">Movimientos Equipos</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-bottom">
+        <a href="quienes-somos.html" class="somos">👥 Quiénes Somos</a>
+        <div class="night-mode"><span>🌙 Modo noche</span></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="bienvenida">
+        <a href="perfil.html">
+        <img src="../imagenes/usuario.png" alt="Foto de usuario" class="foto-usuario" />
+        </a>
+        <p><strong>¡Hola Usuario!</strong></p>
+      </div>
+
+      <section class="registro">
+        <div class="content-box registro">
+          <div class="registro-header">
+            <h2>Registro Salida</h2>
+            <div>
+              <button id="btn-registrar-salida" class="btn-small btn-green">Registrar salida</button>
+              <button id="btnExportHist" class="btn-small btn-outline">Exportar CSV</button>
+            </div>
+          </div>
+
+          <!-- Filtros -->
+          <div class="filtros" style="margin-bottom: 12px;">
+            <select id="filtroEstado">
+              <option value="activos">Solo Activos</option>
+              <option value="todos">Todos los Préstamos</option>
+              <option value="finalizados">Solo Devueltos</option>
+            </select>
+            <input type="text" id="filtroCodigo" placeholder="Buscar por código..." style="flex: 1; max-width: 300px;" />
+            <button id="btnLimpiarFiltros" class="btn-small btn-outline">Limpiar filtros</button>
+          </div>
+
+          <!-- Tabla historial -->
+          <div class="table-responsive">
+            <table class="tabla" id="tablaHistorial">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Estado</th>
+                  <th>C.C Aprendiz</th>
+                  <th>Número Ficha</th>
+                  <th>Fecha</th>
+                  <th>Hora salida</th>
+                  <th>Hora Entrada</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal para registrar salida (pide CC, tipo y escaneo) -->
+  <div id="modal-registrar" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalRegistrarTitle">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <h3 id="modalRegistrarTitle">Registrar salida - Escanea herramienta</h3>
+        <button id="closeRegistrar" class="btn-small btn-outline">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+          <div style="flex:1; min-width:180px;">
+            <label for="reg_tipo">Tipo documento</label>
+            <select id="reg_tipo">
+              <option value="CC">Cédula de ciudadanía (CC)</option>
+              <option value="TI">Tarjeta de identidad (TI)</option>
+              <option value="PPT">Pasaporte (PPT)</option>
+            </select>
+          </div>
+
+          <div style="flex:1; min-width:200px;">
+            <label for="reg_numdoc">Número documento aprendiz</label>
+            <input id="reg_numdoc" type="text" placeholder="Número de documento" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label for="reg_codigo">Código de herramienta</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="reg_codigo" type="text" placeholder="Escanea o escribe el código..." style="flex:1;" />
+            <button id="btnScan" class="btn-small btn-green" type="button">📷 Scanear</button>
+            <span id="scanStatus" class="status">Esperando código...</span>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <small style="color:var(--muted)">Si el aprendiz existe en Registro Aprendices, sus datos (nombre / ficha) se completarán automáticamente.</small>
+        </div>
+
+        <!-- hidden scanner input: focused when waiting for scan; many USB QR readers act like keyboard -->
+        <input id="scanner_input" type="text" style="position:absolute; left:-10000px; top:auto; width:1px; height:1px; opacity:0;" aria-hidden="true" />
+
+        <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
+          <button id="btnRegistrarSalidaModal" class="btn-small btn-green">✅ Confirmar salida</button>
+        </div>
+
+        <div id="scanPreview" style="margin-top:12px; font-weight:700; color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para registrar ENTRADA (devolución) -->
+  <div id="modal-entrada" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalEntradaTitle">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <h3 id="modalEntradaTitle">Registrar entrada - Devolución de herramienta</h3>
+        <button id="closeEntrada" class="btn-small btn-outline">Cerrar</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div>
+          <label for="entrada_codigo">Código de herramienta</label>
+          <input id="entrada_codigo" type="text" placeholder="Escanea o escribe el código..." style="width:100%; padding:9px 10px; border-radius:10px; border:1px solid var(--card-border); background: color-mix(in srgb,var(--surface) 96%, transparent 4%); color:var(--text);" />
+          <small style="color:var(--muted); font-size:12px; margin-top:6px; display:block;">Ingresa el código único de la herramienta a devolver</small>
+        </div>
+
+        <!-- hidden scanner input for entrada -->
+        <input id="scanner_input_entrada" type="text" style="position:absolute; left:-10000px; top:auto; width:1px; height:1px; opacity:0;" aria-hidden="true" />
+
+        <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
+          <button id="btnRegistrarEntrada" class="btn-small btn-green">✅ Registrar entrada</button>
+        </div>
+
+        <div id="scanPreviewEntrada" style="margin-top:12px; font-weight:700; color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../FSApiClient.js"></script>
+  <script>
+    (function () {
+      const API = window.FSApiClient;
+      console.log('🔍 FSApiClient cargado:', API);
+      console.log('🔍 Método crearPrestamo disponible:', typeof API?.crearPrestamo);
+      
+      // Keys:
+      const LS_TOOLS = 'fs_local_tools_v1'; // existing tools storage (from inventario)
+      const LS_APRENDICES = 'fs_aprendices_v1';
+      const LS_HIST = 'fs_historial_v1';
+
+      // Elements
+      const btnRegistrar = document.getElementById('btn-registrar-salida');
+      const modal = document.getElementById('modal-registrar');
+      const closeRegistrar = document.getElementById('closeRegistrar');
+      const scannerInput = document.getElementById('scanner_input');
+      const regCodigo = document.getElementById('reg_codigo');
+      const btnScan = document.getElementById('btnScan');
+      const scanStatus = document.getElementById('scanStatus');
+      const scanPreview = document.getElementById('scanPreview');
+      const regTipo = document.getElementById('reg_tipo');
+      const regNumdoc = document.getElementById('reg_numdoc');
+      const btnConfirmManual = document.getElementById('btnRegistrarSalidaModal');
+
+      const tablaBody = document.querySelector('#tablaHistorial tbody');
+      const btnExport = document.getElementById('btnExportHist');
+      const filtroEstado = document.getElementById('filtroEstado');
+      const filtroCodigo = document.getElementById('filtroCodigo');
+      const btnLimpiarFiltros = document.getElementById('btnLimpiarFiltros');
+
+      // Helpers
+      function loadLS(key) {
+        try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
+      }
+      function saveLS(key, value) { localStorage.setItem(key, JSON.stringify(value || [])); }
+      function genId(prefix='H') { return prefix + '-' + Date.now().toString(36).toUpperCase().slice(-8); }
+      function nowDate() {
+        const d = new Date();
+        return d.toLocaleDateString('en-GB'); // dd/mm/yyyy
+      }
+      function nowTime() {
+        const d = new Date();
+        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      }
+      function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      // Render historial table
+      async function renderHist() {
+        tablaBody.innerHTML = '<tr><td colspan="9" style="padding:14px;color:var(--muted)">Cargando...</td></tr>';
+        
+        // Obtener filtros
+        const estadoFiltro = filtroEstado.value;
+        const codigoFiltro = filtroCodigo.value.trim().toLowerCase();
+        
+        try {
+          // Determinar qué endpoint usar según el filtro de estado
+          let endpoint = 'http://localhost:3000/prestamos/activos';
+          if (estadoFiltro === 'todos') {
+            endpoint = 'http://localhost:3000/prestamos/todos';
+          } else if (estadoFiltro === 'finalizados') {
+            endpoint = 'http://localhost:3000/prestamos/devueltos';
+          }
+          
+          console.log('📡 Cargando préstamos desde:', endpoint);
+          
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            let prestamos = await response.json();
+            
+            console.log('✅ Préstamos cargados:', prestamos.length);
+            
+            // Filtrar por código si hay texto en el filtro
+            if (codigoFiltro) {
+              prestamos = prestamos.filter(p => {
+                const codigo = (p.herramientaDetalle?.codigoUnico || '').toLowerCase();
+                const nombre = (p.herramienta?.nombre || '').toLowerCase();
+                return codigo.includes(codigoFiltro) || nombre.includes(codigoFiltro);
+              });
+              console.log('🔍 Préstamos después de filtrar por código:', prestamos.length);
+            }
+            
+            tablaBody.innerHTML = '';
+            if (!prestamos || prestamos.length === 0) {
+              tablaBody.innerHTML = '<tr><td colspan="9" style="padding:14px;color:var(--muted)">No hay préstamos que coincidan con los filtros.</td></tr>';
+              return;
+            }
+            
+            prestamos.forEach(p => {
+              const tr = document.createElement('tr');
+              
+              // Formatear fechas
+              const fechaPrestamo = p.fechaPrestamo ? new Date(p.fechaPrestamo) : null;
+              const fechaDevolucion = p.fechaDevolucion ? new Date(p.fechaDevolucion) : null;
+              
+              const fecha = fechaPrestamo ? fechaPrestamo.toLocaleDateString('es-CO') : '';
+              const horaSalida = fechaPrestamo ? fechaPrestamo.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
+              const horaEntrada = fechaDevolucion ? fechaDevolucion.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'}) : '';
+              
+              // Celda de hora entrada: mostrar hora o botón
+              let horaEntradaHTML = '';
+              if (horaEntrada) {
+                horaEntradaHTML = escapeHtml(horaEntrada);
+              } else {
+                horaEntradaHTML = `<button class="btn-small btn-green btn-registrar-entrada" data-codigo="${escapeHtml(p.herramientaDetalle?.codigoUnico || '')}">Registrar Entrada</button>`;
+              }
+              
+              tr.innerHTML = `
+                <td>${escapeHtml(p.idPrestamo)}</td>
+                <td>${escapeHtml(p.herramienta?.nombre || 'N/A')}</td>
+                <td>${escapeHtml(p.estado)}</td>
+                <td>${escapeHtml(p.aprendiz?.numeroDocumento || 'N/A')}</td>
+                <td>${escapeHtml(p.aprendiz?.numeroFicha || 'N/A')}</td>
+                <td>${escapeHtml(fecha)}</td>
+                <td>${escapeHtml(horaSalida)}</td>
+                <td>${horaEntradaHTML}</td>
+                <td>
+                  <button class="btn-small btn-delete" data-id="${p.idPrestamo}">Eliminar</button>
+                </td>
+              `;
+              tablaBody.appendChild(tr);
+            });
+          } else {
+            throw new Error('Backend no disponible');
+          }
+        } catch (error) {
+          console.warn('No se pudo cargar préstamos del backend, usando localStorage:', error);
+          // Fallback a localStorage
+          const list = loadLS(LS_HIST);
+          tablaBody.innerHTML = '';
+          if (!list || list.length === 0) {
+            tablaBody.innerHTML = '<tr><td colspan="9" style="padding:14px;color:var(--muted)">No hay registros.</td></tr>';
+            return;
+          }
+          list.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${escapeHtml(r.id)}</td>
+              <td>${escapeHtml(r.nombre)}</td>
+              <td>${escapeHtml(r.estado)}</td>
+              <td>${escapeHtml(r.cc)}</td>
+              <td>${escapeHtml(r.ficha)}</td>
+              <td>${escapeHtml(r.fecha)}</td>
+              <td>${escapeHtml(r.horaSalida)}</td>
+              <td>${escapeHtml(r.horaEntrada || '')}</td>
+              <td>
+                <button class="btn-small btn-delete" data-id="${r.id}">Eliminar</button>
+              </td>
+            `;
+            tablaBody.appendChild(tr);
+          });
+        }
+      }
+
+      // Wire table delete
+      tablaBody.addEventListener('click', async function (ev) {
+        const btn = ev.target.closest('button.btn-delete');
+        if (!btn) return;
+        
+        const id = btn.dataset.id;
+        const isNumericId = !isNaN(parseInt(id));
+        
+        if (!confirm('¿Eliminar préstamo ' + id + '?')) return;
+        
+        try {
+          if (isNumericId) {
+            // Es un ID del backend, usar API
+            const response = await fetch(`http://localhost:3000/prestamos/${id}`, {
+              method: 'DELETE'
+            });
+            
+            if (response.ok || response.status === 204) {
+              alert('✅ Préstamo eliminado exitosamente');
+              renderHist(); // Recargar tabla
+            } else {
+              const error = await response.text();
+              throw new Error(error || 'Error al eliminar préstamo');
+            }
+          } else {
+            // Es un ID local, eliminar de localStorage
+            let list = loadLS(LS_HIST);
+            list = list.filter(x => x.id !== id);
+            saveLS(LS_HIST, list);
+            renderHist();
+          }
+        } catch (error) {
+          console.error('Error al eliminar préstamo:', error);
+          alert('❌ ERROR AL ELIMINAR PRÉSTAMO\n\n' + error.message + '\n\n' +
+                'Verifica:\n' +
+                '• Backend corriendo en localhost:3000\n' +
+                '• El préstamo existe en la base de datos');
+        }
+      });
+
+      // Open/close modal
+      function openModal() {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+      }
+      function closeModal() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden','true');
+        stopWaitingScan();
+        regNumdoc.value = '';
+        regCodigo.value = '';
+        regTipo.value = 'CC';
+        scanPreview.textContent = '';
+      }
+
+      btnRegistrar.addEventListener('click', openModal);
+      closeRegistrar.addEventListener('click', closeModal);
+      modal.addEventListener('click', function(ev){ if (ev.target === modal) closeModal(); });
+
+      // When user types CC check apprentices list and autofill preview
+      function lookupAprendizByDoc(doc) {
+        if (!doc) return null;
+        const list = loadLS(LS_APRENDICES);
+        return list.find(a => String(a.numero_documento) === String(doc)) || null;
+      }
+      regNumdoc.addEventListener('blur', function () {
+        const doc = regNumdoc.value.trim();
+        if (!doc) { scanPreview.textContent = ''; return; }
+        const ap = lookupAprendizByDoc(doc);
+        if (ap) {
+          scanPreview.innerHTML = `Aprendiz: <strong>${escapeHtml(ap.nombre)}</strong> • Ficha: <strong>${escapeHtml(ap.numero_ficha || '')}</strong>`;
+        } else {
+          scanPreview.innerHTML = `<span style="color:var(--muted)">Aprendiz no encontrado en registros locales (número ${escapeHtml(doc)})</span>`;
+        }
+      });
+      // SCAN logic: keyboard-emulating QR readers -> we focus hidden input and wait for "Enter"
+      let waitingScan = false;
+      function startWaitingScan() {
+        waitingScan = true;
+        scanStatus.textContent = '🔄 Esperando escaneo...';
+        scanStatus.style.color = '#ffd54f';
+        scannerInput.value = '';
+        scannerInput.focus();
+      }
+      function stopWaitingScan() {
+        waitingScan = false;
+        scanStatus.textContent = 'Esperando código...';
+        scanStatus.style.color = '';
+        scannerInput.blur();
+        scannerInput.value = '';
+      }
+
+      btnScan.addEventListener('click', function () {
+        startWaitingScan();
+      });
+
+      // Actualizar estado cuando el usuario escribe manualmente
+      // Handle incoming scanner input (many QR readers send the code then an Enter)
+      scannerInput.addEventListener('keydown', function (ev) {
+        if (!waitingScan) return;
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          const scanned = scannerInput.value.trim();
+          if (scanned) {
+            regCodigo.value = scanned; // Llenar el campo visible
+            handleScannedCode(scanned);
+          }
+        }
+      });
+
+      // Also handle paste or input (some scanners paste)
+      scannerInput.addEventListener('input', function () {
+        // optional: if value contains newline or ends with a sentinel, trigger
+        const v = scannerInput.value;
+        if (!waitingScan) return;
+        // if includes newline or long enough, attempt to process
+        if (v.includes('\n') || v.includes('\r') || v.length > 20) {
+          const cleaned = v.replace(/[\r\n]+/g,'').trim();
+          if (cleaned) {
+            regCodigo.value = cleaned; // Llenar el campo visible
+            handleScannedCode(cleaned);
+          }
+        }
+      });
+
+      // Process scanned code: find tool and build historial record
+      async function handleScannedCode(code) {
+        stopWaitingScan();
+        scanPreview.textContent = 'Código leído: ' + code;
+        
+        // Prepare aprendiz info
+        const cc = regNumdoc.value.trim();
+        const tipo = regTipo.value;
+        
+        if (!cc) {
+          alert('Por favor, ingresa el número de documento del aprendiz.');
+          return;
+        }
+        
+        const apr = lookupAprendizByDoc(cc);
+        let ficha = apr ? (apr.numero_ficha || '') : '';
+        
+        // ===== PRIMERO: Intentar crear préstamo en el backend =====
+        console.log('📤 Iniciando proceso de creación de préstamo...');
+        console.log('  - Código único:', code);
+        console.log('  - Número documento:', cc);
+        console.log('  - ID Usuario:', 1);
+        
+        let prestamoExitoso = false;
+        let nombreHerramienta = 'Código: ' + code;
+        let estadoHerramienta = 'Desconocido';
+        let nombreAprendiz = '';
+        
+        try {
+          // Verificar que el API esté disponible
+          if (!API) {
+            throw new Error('❌ FSApiClient no está cargado. Verifica que FSApiClient.js esté incluido.');
+          }
+          
+          if (typeof API.crearPrestamo !== 'function') {
+            throw new Error('❌ El método crearPrestamo no existe en FSApiClient');
+          }
+          
+          // Obtener idUsuario (por ahora hardcodeado)
+          // IMPORTANTE: Este usuario DEBE existir en la tabla 'usuario' de la BD
+          // Cambia este ID por uno que exista en tu base de datos
+          const idUsuario = 48; // TODO: cambiar por ID real de usuario logueado
+          
+          console.log('⚠️ IMPORTANTE: Usando idUsuario =', idUsuario, '- Verifica que este usuario exista en la BD');
+          
+          // Crear el objeto Prestamo con el formato que espera el backend
+          // LocalDateTime en Java NO acepta la "Z", necesita formato: 2025-11-19T01:21:34
+          const ahora = new Date();
+          const year = ahora.getFullYear();
+          const month = String(ahora.getMonth() + 1).padStart(2, '0');
+          const day = String(ahora.getDate()).padStart(2, '0');
+          const hours = String(ahora.getHours()).padStart(2, '0');
+          const minutes = String(ahora.getMinutes()).padStart(2, '0');
+          const seconds = String(ahora.getSeconds()).padStart(2, '0');
+          const fechaPrestamoLocal = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+          
+          const prestamoPayload = {
+            fechaPrestamo: fechaPrestamoLocal,
+            fechaDevolucion: null,
+            estado: 'Activo'
+          };
+          
+          console.log('  - Payload a enviar:', JSON.stringify(prestamoPayload, null, 2));
+          console.log('  - URL completa:', `http://localhost:3000/prestamos/crear?codigoUnico=${code}&idUsuario=${idUsuario}&numeroDocumento=${cc}`);
+          
+          // Llamar al backend
+          console.log('  🔄 Enviando petición al backend...');
+          const prestamoCreado = await API.crearPrestamo(code, idUsuario, cc, prestamoPayload);
+          
+          console.log('✅ Respuesta del backend:', prestamoCreado);
+          console.log('✅ Préstamo creado exitosamente con ID:', prestamoCreado.idPrestamo);
+          
+          prestamoExitoso = true;
+          
+          // Extraer información de la respuesta del backend
+          if (prestamoCreado.herramienta && prestamoCreado.herramienta.nombre) {
+            nombreHerramienta = prestamoCreado.herramienta.nombre;
+          }
+          if (prestamoCreado.herramientaDetalle && prestamoCreado.herramientaDetalle.estado) {
+            estadoHerramienta = prestamoCreado.herramientaDetalle.estado;
+          }
+          // ✅ NUEVO: Extraer datos del aprendiz desde el backend
+          if (prestamoCreado.aprendiz) {
+            if (prestamoCreado.aprendiz.numeroFicha) {
+              ficha = prestamoCreado.aprendiz.numeroFicha;
+              console.log('✅ Número de ficha obtenido del backend:', ficha);
+            }
+            if (prestamoCreado.aprendiz.nombre) {
+              nombreAprendiz = prestamoCreado.aprendiz.nombre;
+              console.log('✅ Nombre del aprendiz obtenido del backend:', nombreAprendiz);
+            }
+          }
+          
+        } catch (error) {
+          console.error('❌ ERROR al crear préstamo en backend:', error);
+          console.error('  - Tipo de error:', error.name);
+          console.error('  - Mensaje:', error.message);
+          
+          prestamoExitoso = false;
+          
+          // Verificar si es un error de herramienta ya prestada
+          const errorMsg = error.message || '';
+          if (errorMsg.includes('ya tiene un préstamo activo') || 
+              errorMsg.includes('no está disponible') ||
+              errorMsg.includes('Prestamo') ||
+              errorMsg.includes('prestamo activo')) {
+            alert('⚠️ HERRAMIENTA NO DISPONIBLE\n\n' +
+                  'La herramienta con código ' + code + ' ya tiene un préstamo activo.\n\n' +
+                  'Detalles del error:\n' + errorMsg + '\n\n' +
+                  'Acciones sugeridas:\n' +
+                  '• Verifica el código ingresado\n' +
+                  '• Registra primero la devolución de esta herramienta\n' +
+                  '• Consulta el historial de préstamos activos');
+            closeModal();
+            return; // No continuar con el proceso
+          }
+          
+          // Intentar buscar en localStorage como fallback
+          const tools = loadLS(LS_TOOLS);
+          let foundTool = tools.find(t => String(t.idHerramienta) === String(code));
+          if (!foundTool) {
+            for (const t of tools) {
+              if (Array.isArray(t.detalles)) {
+                const d = t.detalles.find(dd => String(dd.codigoUnico) === String(code) || String(dd.idDetalle) === String(code));
+                if (d) { foundTool = t; break; }
+              }
+            }
+          }
+          
+          if (foundTool) {
+            nombreHerramienta = foundTool.nombre || 'Sin nombre';
+            estadoHerramienta = foundTool.estado || 'Desconocido';
+          }
+        }
+        
+        // ===== SEGUNDO: Guardar registro local en historial =====
+        const record = {
+          id: genId('H'),
+          idHerramienta: code,
+          nombre: nombreHerramienta,
+          estado: estadoHerramienta,
+          cc: cc || '',
+          ficha: ficha || '',
+          fecha: nowDate(),
+          horaSalida: nowTime(),
+          horaEntrada: ''
+        };
+        
+        const hist = loadLS(LS_HIST);
+        hist.unshift(record);
+        saveLS(LS_HIST, hist);
+        renderHist();
+        
+        closeModal();
+        
+        // ===== TERCERO: Mostrar resultado al usuario =====
+        if (prestamoExitoso) {
+          alert('✅ ¡PRÉSTAMO REGISTRADO EXITOSAMENTE!\n\n' +
+                'Herramienta: ' + nombreHerramienta + '\n' +
+                'Código: ' + code + '\n' +
+                'Aprendiz: ' + (apr ? apr.nombre : cc) + '\n' +
+                'Ficha: ' + ficha + '\n' +
+                'Estado: Activo\n\n' +
+                '✓ Guardado en base de datos\n' +
+                '✓ Guardado en historial local');
+        } else {
+          alert('⚠️ PRÉSTAMO GUARDADO SOLO LOCALMENTE\n\n' +
+                'Herramienta: ' + nombreHerramienta + '\n' +
+                'Código: ' + code + '\n' +
+                'Aprendiz: ' + (apr ? apr.nombre : cc) + '\n' +
+                'Ficha: ' + ficha + '\n\n' +
+                '❌ No se pudo conectar con el servidor\n' +
+                'El préstamo se guardó en el historial local.\n\n' +
+                'Verifica:\n' +
+                '• Backend corriendo en localhost:3000\n' +
+                '• Herramienta existe en herramienta_detalle\n' +
+                '• Aprendiz registrado en la BD\n' +
+                '• Usuario ID=1 existe en la BD');
+        }
+      }
+
+      // Also allow manual confirmation without scanning (useful for testing)
+      btnConfirmManual.addEventListener('click', async function () {
+        const cc = regNumdoc.value.trim();
+        const codigo = regCodigo.value.trim();
+        const tipo = regTipo.value;
+        
+        if (!cc) { 
+          alert('❌ Introduce número de documento del aprendiz.'); 
+          return; 
+        }
+        
+        if (!codigo) {
+          alert('❌ Introduce el código de la herramienta (escaneado o manual).');
+          return;
+        }
+        
+        await handleScannedCode(codigo);
+      });
+
+      // Export CSV for historial
+      btnExport.addEventListener('click', function () {
+        const list = loadLS(LS_HIST);
+        if (!list || list.length === 0) { alert('No hay registros para exportar.'); return; }
+        const headers = ['id','nombre','estado','cc','ficha','fecha','horaSalida','horaEntrada','idHerramienta'];
+        const rows = [headers.join(',')].concat(list.map(r => headers.map(h => `"${(r[h] || '').toString().replace(/"/g,'""')}"`).join(',')));
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'historial_salidas.csv'; document.body.appendChild(a); a.click();
+        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
+      });
+
+      // ============ LÓGICA MODAL DE ENTRADA (DEVOLUCIÓN) ============
+      const modalEntrada = document.getElementById('modal-entrada');
+      const closeEntrada = document.getElementById('closeEntrada');
+      const entradaCodigo = document.getElementById('entrada_codigo');
+      const scannerInputEntrada = document.getElementById('scanner_input_entrada');
+      const btnRegistrarEntrada = document.getElementById('btnRegistrarEntrada');
+      const scanPreviewEntrada = document.getElementById('scanPreviewEntrada');
+
+      let waitingScanEntrada = false;
+
+      // Abrir modal de entrada
+      function openModalEntrada(codigo = '') {
+        modalEntrada.classList.add('open');
+        modalEntrada.setAttribute('aria-hidden', 'false');
+        if (codigo) {
+          entradaCodigo.value = codigo;
+          scanPreviewEntrada.textContent = `Código cargado: ${codigo}`;
+        } else {
+          entradaCodigo.value = '';
+          scanPreviewEntrada.textContent = '';
+        }
+        entradaCodigo.focus();
+      }
+
+      // Cerrar modal de entrada
+      function closeModalEntrada() {
+        modalEntrada.classList.remove('open');
+        modalEntrada.setAttribute('aria-hidden', 'true');
+        stopWaitingScanEntrada();
+        entradaCodigo.value = '';
+        scanPreviewEntrada.textContent = '';
+      }
+
+      closeEntrada.addEventListener('click', closeModalEntrada);
+      modalEntrada.addEventListener('click', function(ev) {
+        if (ev.target === modalEntrada) closeModalEntrada();
+      });
+
+      // Escanear código para entrada (mantener funcionalidad de escáner oculto)
+      function startWaitingScanEntrada() {
+        waitingScanEntrada = true;
+        scannerInputEntrada.value = '';
+        scannerInputEntrada.focus();
+        console.log('🎯 Escáner de entrada activado. Esperando código QR...');
+      }
+
+      function stopWaitingScanEntrada() {
+        waitingScanEntrada = false;
+        scannerInputEntrada.blur();
+        scannerInputEntrada.value = '';
+        console.log('🛑 Escáner de entrada desactivado');
+      }
+
+      // Manejar escaneo de entrada (escáner oculto para pistolas USB)
+      scannerInputEntrada.addEventListener('keydown', function(ev) {
+        if (!waitingScanEntrada) return;
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          const scanned = scannerInputEntrada.value.trim();
+          console.log('✅ Enter detectado. Código escaneado:', scanned);
+          if (scanned) {
+            entradaCodigo.value = scanned; // Llenar el campo visible
+            scanPreviewEntrada.textContent = `Código escaneado: ${scanned}`;
+          }
+        }
+      });
+
+      scannerInputEntrada.addEventListener('input', function() {
+        const v = scannerInputEntrada.value;
+        if (!waitingScanEntrada) return;
+        if (v.includes('\n') || v.includes('\r') || v.length > 20) {
+          const cleaned = v.replace(/[\r\n]+/g, '').trim();
+          console.log('✅ Código detectado por longitud/newline:', cleaned);
+          if (cleaned) {
+            entradaCodigo.value = cleaned; // Llenar el campo visible
+            scanPreviewEntrada.textContent = `Código escaneado: ${cleaned}`;
+          }
+        }
+      });
+
+      // Actualizar preview cuando el usuario escribe manualmente
+      entradaCodigo.addEventListener('input', function() {
+        const codigo = entradaCodigo.value.trim();
+        if (codigo) {
+          scanPreviewEntrada.textContent = `Código: ${codigo}`;
+        } else {
+          scanPreviewEntrada.textContent = '';
+        }
+      });
+
+      // Registrar entrada al hacer clic en el botón
+      btnRegistrarEntrada.addEventListener('click', async function() {
+        const codigo = entradaCodigo.value.trim();
+        
+        if (!codigo) {
+          alert('❌ Por favor, ingresa o escanea el código de la herramienta.');
+          return;
+        }
+        
+        await handleScannedEntrada(codigo);
+      });
+
+      // Procesar código escaneado para entrada
+      async function handleScannedEntrada(code) {
+        stopWaitingScanEntrada();
+        
+        // Normalizar código: limpiar espacios y normalizar formato
+        const codigoLimpio = code.trim().replace(/\s+/g, '');
+        const codigoNormalizado = codigoLimpio.replace(/\//g, '-');
+        
+        scanPreviewEntrada.textContent = 'Procesando código: ' + codigoLimpio;
+        
+        console.log('🔍 Código a devolver:', codigoLimpio);
+        console.log('🔍 Código normalizado:', codigoNormalizado);
+
+        try {
+          // Llamar al endpoint de devolución con el código normalizado
+          console.log('📤 Enviando devolución para código:', codigoNormalizado);
+          
+          const response = await fetch(`http://localhost:3000/prestamos/devolver/codigo/${encodeURIComponent(codigoNormalizado)}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const prestamoActualizado = await response.json();
+            console.log('✅ Devolución exitosa:', prestamoActualizado);
+            
+            alert('✅ ¡DEVOLUCIÓN REGISTRADA EXITOSAMENTE!\n\n' +
+                  'Herramienta: ' + (prestamoActualizado.herramienta?.nombre || 'N/A') + '\n' +
+                  'Código: ' + codigoNormalizado + '\n' +
+                  'Estado: ' + prestamoActualizado.estado + '\n' +
+                  'Fecha devolución: ' + new Date(prestamoActualizado.fechaDevolucion).toLocaleString('es-CO'));
+            
+            closeModalEntrada();
+            renderHist(); // Recargar tabla
+          } else {
+            const error = await response.text();
+            console.error('❌ Error del servidor:', error);
+            throw new Error(error || 'Error al registrar devolución');
+          }
+        } catch (error) {
+          console.error('❌ Error al registrar entrada:', error);
+          alert('❌ ERROR AL REGISTRAR DEVOLUCIÓN\n\n' + error.message + '\n\n' +
+                'Verifica:\n' +
+                '• Backend corriendo en localhost:3000\n' +
+                '• El préstamo existe y está activo\n' +
+                '• El código es correcto: ' + codigoNormalizado);
+        }
+      }
+
+      // Manejar clic en botones de "Registrar Entrada"
+      tablaBody.addEventListener('click', function(ev) {
+        const btnEntrada = ev.target.closest('button.btn-registrar-entrada');
+        if (btnEntrada) {
+          const codigo = btnEntrada.dataset.codigo;
+          if (codigo) {
+            openModalEntrada(codigo);
+          }
+        }
+      });
+
+      // Event listeners para filtros
+      filtroEstado.addEventListener('change', function() {
+        renderHist();
+      });
+
+      filtroCodigo.addEventListener('input', function() {
+        // Debounce para no recargar en cada tecla
+        clearTimeout(window.filtroCodigoTimeout);
+        window.filtroCodigoTimeout = setTimeout(() => {
+          renderHist();
+        }, 500);
+      });
+
+      btnLimpiarFiltros.addEventListener('click', function() {
+        filtroEstado.value = 'activos';
+        filtroCodigo.value = '';
+        renderHist();
+      });
+
+      // Initialize: render existing historial
+      renderHist();
+
+      // Accessibility: if modal open, capture Esc (already handled by keydown global for closing)
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape') {
+          if (modal.classList.contains('open')) closeModal();
+          if (modalEntrada.classList.contains('open')) closeModalEntrada();
+        }
+      });
+
+    })();
+  </script>
+
+  <script src="../user-session.js"></script>
+  <script src="../modo-oscuro.js"></script>
+  <script src="../render-window.js"></script>
+</body>
+
+</html>
