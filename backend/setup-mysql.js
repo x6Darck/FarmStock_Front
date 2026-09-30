@@ -9,7 +9,7 @@ const sqlFolder = path.join(__dirname, 'sql');
 
 // Cambia estos datos según tu configuración
 const MYSQL_USER = 'root';
-const MYSQL_PASSWORD = 'Cesar;10'; // Cambia esto por la contraseña real
+const MYSQL_PASSWORD = ''; // Cambia esto por la contraseña real
 
 // 1. Instalar MySQL (manual, solo si no está instalado)
 console.log('Abriendo instalador de MySQL...');
