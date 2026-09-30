@@ -1,17 +1,19 @@
-# FarmStock - Frontend (Aplicación de escritorio)
+# FarmStock - Aplicación de escritorio
 
-![Electron](https://img.shields.io/badge/Electron-47848F?style=flat&logo=electron&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-28-47848F?style=flat&logo=electron&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
 ![Offline](https://img.shields.io/badge/Funciona-sin%20conexi%C3%B3n-2EA44F?style=flat)
-![Estado](https://img.shields.io/badge/Estado-%F0%9F%94%A7%20COMPLETAR-lightgrey?style=flat)
+![Estado](https://img.shields.io/badge/Estado-Completado-2EA44F?style=flat)
 
-**FarmStock** es un sistema de inventario para la gestión de **herramientas y demás elementos de la finca del SENA ubicada en El Zulia (Cúcuta), Norte de Santander**.
+**FarmStock** es un sistema de inventario para la gestión de **herramientas y equipos de la finca del SENA ubicada en El Zulia (Cúcuta), Norte de Santander**.
 
-Este repositorio contiene la **aplicación de escritorio** de FarmStock, desarrollada con **Electron**, que ofrece la interfaz para registrar, consultar y controlar el inventario. Se comunica con el backend de FarmStock, desarrollado con Spring Boot.
+Este repositorio contiene la **aplicación de escritorio**, desarrollada con **Electron**, que ofrece la interfaz para registrar, consultar y controlar el inventario. Se comunica con el backend de FarmStock, una API REST desarrollada con Spring Boot que vive en su propio repositorio.
 
-El sistema fue diseñado para **funcionar sin una conexión estable a internet**, una condición habitual en entornos rurales como el de la finca.
+FarmStock fue pensado para **funcionar sin una conexión estable a internet**: la aplicación, el backend y la base de datos se ejecutan en el propio equipo, sin depender de servicios en la nube.
 
-> 🔧 **COMPLETAR:** indica si fue un proyecto desarrollado de forma individual o en equipo, y en qué contexto (por ejemplo, proyecto formativo del SENA).
+El sistema fue **diseñado y desarrollado de forma individual**.
 
 ---
 
@@ -36,44 +38,47 @@ El sistema fue diseñado para **funcionar sin una conexión estable a internet**
 
 ## 🚀 Características principales
 
-- Gestión del inventario de herramientas y elementos de la finca
-- Aplicación de escritorio instalable en equipos de la institución
-- Diseñada para operar sin conexión estable a internet
-- Comunicación con un backend propio mediante API REST
-
-> 🔧 **COMPLETAR:** reemplaza o amplía esta lista con las funciones reales de la aplicación. Por ejemplo: registro y edición de herramientas, categorías, control de entradas y salidas, préstamos, estado o ubicación de cada elemento, búsqueda y filtros, reportes, usuarios y roles. Deja solo lo que realmente existe en el código.
+- **Inventario de herramientas:** registro, consulta, edición y eliminación, con el detalle de cada unidad.
+- **Registro de aprendices y personas:** alta y búsqueda por documento o por ficha.
+- **Equipos de cómputo:** registro y consulta por código o por cédula, con sus movimientos de entrada y salida.
+- **Registro de salidas** de herramientas.
+- **Inicio de sesión y perfil** de usuario según el cargo.
+- **Estadísticas** con actualización periódica y **exportación de informes en PDF**.
+- **Notificaciones** por correo desde la interfaz.
+- **Modo oscuro** y ventana sin bordes con controles propios.
+- **Página institucional** "Quiénes somos" con la misión y la visión.
 
 ---
 
 ## 📡 Funcionamiento sin conexión
 
-La finca no siempre cuenta con internet estable, por lo que FarmStock se planteó desde el inicio para **no depender de una conexión permanente**. Por eso se eligió una aplicación de escritorio con Electron, que se ejecuta en el propio equipo, en lugar de una aplicación web alojada en un servidor remoto.
+La finca no siempre cuenta con internet estable, por lo que la aplicación se diseñó para no depender de él:
 
-> 🔧 **COMPLETAR:** explica en dos o tres frases cómo se logra esto realmente. Por ejemplo: dónde se ejecuta el backend (en el mismo equipo o en un computador de la red local), qué base de datos se usa y dónde se guardan los datos, y si hay algún mecanismo de respaldo o sincronización.
+- **Todo corre en el equipo.** La aplicación de escritorio, el backend de Spring Boot y la base de datos MySQL se ejecutan localmente. No se usan servicios alojados en la nube.
+- **Respaldo local.** Si el backend no responde, el cliente (`FSApiClient.js`) guarda y consulta los datos de herramientas y aprendices en el almacenamiento local de la aplicación (`localStorage`), para no interrumpir el trabajo.
+
+Solo el envío de notificaciones por correo requiere conexión a internet.
 
 ---
 
 ## 🏗️ Arquitectura
 
-La aplicación de escritorio actúa como cliente del backend de FarmStock.
-
 ```text
-Usuario
-   │
-   ▼
-Aplicación de escritorio (Electron)
-   │
-   ▼
-Comunicación con la API REST
-   │
-   ▼
-FarmStock Backend (Spring Boot)
-   │
-   ▼
-Base de datos
+  Aplicación de escritorio (Electron)
+  HTML · CSS · JavaScript
+              │
+              │  FSApiClient.js · REST API
+              ▼
+  FarmStock Backend (Spring Boot)
+              │
+              ▼
+        MySQL (local)
+
+
+  Sin respuesta del backend → respaldo en localStorage
 ```
 
-> 🔧 **COMPLETAR:** confirma este flujo y ajústalo si es distinto (por ejemplo, si Electron inicia el backend automáticamente al abrir la aplicación).
+El proceso principal (`main.js`) crea la ventana y gestiona la navegación, el control de la ventana y la generación de PDF. El archivo `preload.js` expone a la interfaz solo las funciones necesarias, con `contextIsolation` activado y `nodeIntegration` desactivado.
 
 ---
 
@@ -81,62 +86,67 @@ Base de datos
 
 | Tecnología | Uso |
 |---|---|
-| Electron | Aplicación de escritorio multiplataforma |
-| Node.js / npm | Entorno de ejecución y gestión de dependencias |
-
-> 🔧 **COMPLETAR:** agrega el resto de tecnologías que uses en la interfaz, según tu `package.json` (por ejemplo, el framework o la librería de UI, el cliente HTTP, el empaquetador).
+| Electron 28 | Aplicación de escritorio |
+| electron-builder | Empaquetado e instalador |
+| HTML, CSS y JavaScript | Interfaz de usuario |
+| Fetch API | Comunicación con la API REST |
+| localStorage | Respaldo local sin conexión |
+| Node.js / npm | Entorno de desarrollo |
 
 ---
 
 ## 🔗 Integración con el backend
 
-La aplicación se comunica con **FarmStock Backend** mediante una API REST.
+La aplicación consume la API de **FarmStock Backend** (Spring Boot). El backend debe estar en ejecución antes de abrir la aplicación.
 
-> 🔧 **COMPLETAR:** indica cómo se configura la dirección del backend (archivo de configuración, variable de entorno o valor fijo) y cuál es la URL por defecto en desarrollo. No incluyas direcciones ni claves privadas.
+La dirección del backend se define en la constante `API_BASE` del archivo `app/FSApiClient.js` (y en los demás archivos del directorio `app/` que consumen la API) y debe apuntar al puerto donde corre el backend. Por defecto, Spring Boot usa el puerto `8080`.
+
+Repositorio del backend: [github.com/x6Darck/FarmStock_Backend](https://github.com/x6Darck/FarmStock_Backend)
 
 ---
 
 ## 📋 Requisitos
 
-Para ejecutar el proyecto localmente se requiere:
-
-- Node.js
-- npm
+- Node.js y npm
 - Git
-- Backend de FarmStock en ejecución
-
-> 🔧 **COMPLETAR:** indica la versión mínima de Node.js que usaste.
+- [FarmStock Backend](https://github.com/x6Darck/FarmStock_Backend) en ejecución (requiere Java 21 y MySQL)
 
 ---
 
 ## ⚙️ Instalación y ejecución local
 
-### 1. Clonar el repositorio
+### 1. Iniciar el backend
+
+Sigue las instrucciones del repositorio [FarmStock_Backend](https://github.com/x6Darck/FarmStock_Backend).
+
+### 2. Clonar este repositorio
 
 ```bash
 git clone https://github.com/x6Darck/FarmStock_Front.git
 cd FarmStock_Front
 ```
 
-### 2. Instalar dependencias
+### 3. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 3. Ejecutar la aplicación en modo desarrollo
+### 4. Ejecutar la aplicación
 
 ```bash
 npm start
 ```
 
-> 🔧 **COMPLETAR:** verifica en la sección `scripts` de tu `package.json` que el comando para iniciar sea `npm start`, y corrígelo si es otro (por ejemplo, `npm run dev`).
-
 ---
 
 ## 📦 Generación del instalador
 
-> 🔧 **COMPLETAR:** si el proyecto genera un instalador (por ejemplo con `electron-builder` o `electron-forge`), escribe aquí el comando y dónde queda el archivo resultante. Si no lo hace, elimina esta sección y su enlace en la tabla de contenido.
+```bash
+npm run dist
+```
+
+El resultado se genera con **electron-builder** en la carpeta `dist/`.
 
 ---
 
@@ -145,22 +155,23 @@ npm start
 ```text
 FarmStock_Front/
 │
-└── (COMPLETAR: pega aquí la estructura real de carpetas)
+├── main.js                  # Proceso principal de Electron
+├── preload.js               # Puente seguro entre Electron y la interfaz
+├── package.json
+│
+└── app/                     # Interfaz de usuario
+    ├── HTML/                # Pantallas (login, inventario, estadísticas, equipos…)
+    ├── CSS/                 # Estilos
+    ├── imagenes/            # Recursos gráficos
+    ├── FSApiClient.js       # Cliente de la API con respaldo local
+    └── *.js                 # Lógica de cada pantalla
 ```
-
-> 🔧 **COMPLETAR:** en Windows puedes obtenerla con `tree /F` dentro de la carpeta del proyecto. Deja solo las carpetas y los archivos principales, y agrega una breve descripción a cada uno.
 
 ---
 
 ## 🔄 Ecosistema FarmStock
 
-FarmStock está compuesto por dos aplicaciones.
-
-### ⚙️ FarmStock Backend
-
-API REST desarrollada con **Spring Boot**, encargada de la lógica de negocio y de la persistencia de los datos del inventario.
-
-**Repositorio:** [github.com/x6Darck/FarmStock_Backend](https://github.com/x6Darck/FarmStock_Backend)
+FarmStock se compone de dos repositorios.
 
 ### 🖥️ FarmStock Frontend
 
@@ -168,11 +179,17 @@ Aplicación de escritorio desarrollada con **Electron** (este repositorio).
 
 **Repositorio:** [github.com/x6Darck/FarmStock_Front](https://github.com/x6Darck/FarmStock_Front)
 
+### ⚙️ FarmStock Backend
+
+API REST desarrollada con **Java y Spring Boot**. Gestiona herramientas, préstamos, mantenimientos, aprendices, usuarios y equipos de cómputo, y genera códigos QR y notificaciones por correo.
+
+**Repositorio:** [github.com/x6Darck/FarmStock_Backend](https://github.com/x6Darck/FarmStock_Backend)
+
 ---
 
 ## 📌 Estado del proyecto
 
-**Estado:** 🔧 COMPLETAR (por ejemplo: Completado / En uso / En desarrollo)
+**Estado:** Completado
 
 FarmStock fue desarrollado para cubrir una necesidad real de control de inventario en la finca del SENA ubicada en El Zulia (Cúcuta), con la condición de funcionar sin conexión estable a internet.
 
@@ -180,7 +197,17 @@ FarmStock fue desarrollado para cubrir una necesidad real de control de inventar
 
 ## 👨‍💻 Desarrollo
 
-> 🔧 **COMPLETAR:** lista lo que hiciste tú en esta parte del proyecto, con frases cortas. Por ejemplo: diseño de la interfaz, integración con la API, empaquetado con Electron, validación de formularios. Incluye solo lo que sea cierto.
+FarmStock fue **diseñado, estructurado y desarrollado de forma individual**. En la aplicación de escritorio se realizó:
+
+- Diseño de la interfaz y de las pantallas
+- Aplicación de escritorio con Electron y comunicación segura entre procesos
+- Cliente de la API con respaldo local para trabajar sin conexión
+- Inicio de sesión y gestión de la sesión del usuario
+- Módulos de herramientas, aprendices y equipos de cómputo
+- Estadísticas y exportación de informes en PDF
+- Modo oscuro y navegación entre pantallas
+- Empaquetado de la aplicación con electron-builder
+- Integración con el backend de Spring Boot
 
 ---
 
@@ -188,17 +215,9 @@ FarmStock fue desarrollado para cubrir una necesidad real de control de inventar
 
 FarmStock fue desarrollado para la finca del SENA ubicada en El Zulia (Cúcuta).
 
-Este repositorio se presenta con fines demostrativos y de **portafolio profesional**. Su publicación no implica la transferencia de derechos de propiedad intelectual ni autorización para copiar, modificar, distribuir o utilizar el software con fines comerciales.
+Este repositorio se publica **únicamente con fines demostrativos y de portafolio profesional**. Su publicación no implica la transferencia de derechos de propiedad intelectual ni autorización para copiar, modificar, distribuir o utilizar el software con fines comerciales.
 
-> 🔧 **COMPLETAR:** confirma que puedes publicar el proyecto y que este texto es compatible con los acuerdos o las normas de propiedad intelectual bajo los que se desarrolló.
-
-El repositorio no incluye:
-
-- Credenciales
-- Contraseñas
-- Datos personales
-- Información sensible
-- Configuraciones privadas
+El repositorio no incluye credenciales, contraseñas, datos personales ni configuraciones privadas.
 
 ---
 
@@ -206,9 +225,11 @@ El repositorio no incluye:
 
 **Jean Pier Gómez**
 
+Desarrollo individual de FarmStock.
+
 ---
 
 <p align="center">
   <strong>FarmStock — Sistema de inventario para la finca del SENA</strong><br>
-  Desarrollado con Spring Boot y Electron.
+  Desarrollado con Electron y Spring Boot.
 </p>
